@@ -34,7 +34,7 @@ deps:
 build: $(shell find . -name "*.go")
 	CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' -o openebs-provisioner .
 
-image: 
+push: 
 	@cp openebs-provisioner buildscripts/docker/
 	@cd buildscripts/docker && sudo docker build -t openebs/openebs-k8s-provisioner:ci .
 	@sh buildscripts/push
