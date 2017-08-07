@@ -15,21 +15,7 @@
 .PHONY: image clean bootstrap deps build image
 .DEFAULT_GOAL := build
 
-# Tools required for different make targets or for development purposes
-EXTERNAL_TOOLS=\
-	github.com/Masterminds/glide 
 
-# Bootstrap the build by downloading additional tools
-bootstrap:
-	@for tool in  $(EXTERNAL_TOOLS) ; do \
-		echo "Installing $$tool" ; \
-		go get $$tool; \
-	done 
-
-deps: 
-	rm -rf vendor
-	@glide up
-	glide install -v
 
 build: $(shell find . -name "*.go")
 	CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' -o openebs-provisioner .
@@ -40,7 +26,7 @@ push:
 
 deploy:
 	@cp openebs-provisioner buildscripts/docker/
-	@cd buildscripts/docker && sudo docker build -t openebs/openebs-k8s-provisioner:ci .
+	@cd buildscripts/docker && sudo docker build -t ${DIMAGE}:latest .
 	@sh buildscripts/push
 
 clean:
