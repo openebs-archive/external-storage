@@ -210,3 +210,7 @@ push-openebs-provisioner:
 	cd openebs; \
 	make push
 .PHONY: push-openebs-provisioner
+
+deploy-openebs-provisioner:
+	cd openebs; \
+	make deploy

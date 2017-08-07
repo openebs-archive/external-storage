@@ -37,6 +37,10 @@ build: $(shell find . -name "*.go")
 push: 
 	@cp openebs-provisioner buildscripts/docker/
 	@cd buildscripts/docker && sudo docker build -t openebs/openebs-k8s-provisioner:ci .
+
+deploy:
+	@cp openebs-provisioner buildscripts/docker/
+	@cd buildscripts/docker && sudo docker build -t openebs/openebs-k8s-provisioner:ci .
 	@sh buildscripts/push
 
 clean:
