@@ -82,8 +82,9 @@ func CreateVsm(vname string, size string) error {
 	code := resp.StatusCode
 	if code != http.StatusOK {
 		glog.Fatalf("Status error: %v\n", http.StatusText(code))
-		os.Exit(1)
+		return err
 	}
+
 	glog.Infof("VSM Successfully Created:\n%v\n", string(data))
 	return nil
 }
@@ -115,7 +116,7 @@ func ListVsm(vname string, obj interface{}) error {
 	code := resp.StatusCode
 	if code != http.StatusOK {
 		glog.Fatalf("Status error: %v\n", http.StatusText(code))
-		os.Exit(1)
+		return err
 	}
 	glog.Info("VSM Details Successfully Retrieved")
 	return json.NewDecoder(resp.Body).Decode(obj)
@@ -148,7 +149,7 @@ func DeleteVsm(vname string) error {
 	code := resp.StatusCode
 	if code != http.StatusOK {
 		glog.Fatalf("Status error: %v\n", http.StatusText(code))
-		os.Exit(1)
+		return err
 	}
 	glog.Info("VSM Deleted Successfully initiated")
 	return nil

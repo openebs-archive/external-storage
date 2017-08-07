@@ -64,7 +64,6 @@ func NewOpenEBSProvisioner(client kubernetes.Interface) controller.Provisioner {
 		glog.Fatal("env variable NODE_NAME must be set so that this provisioner can identify itself")
 	}
 
-	//TODO - HandleError Cases
 	mayaServiceURI := "http://" + mApiv1.GetMayaClusterIP(client) + ":5656"
 	os.Setenv("MAPI_ADDR", mayaServiceURI)
 
@@ -84,7 +83,6 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 
 	volSize := options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 
-	//TODO - Need to change the size as a value that Maya Server can accept
 	err := mApiv1.CreateVsm(options.PVName, volSize.String())
 	if err != nil {
 		glog.Fatalf("Error creating volume: %v", err)
@@ -111,7 +109,6 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 	glog.Infof("Volume IQN: %v", iqn)
 	glog.Infof("Volume Target: %v", targetPortal)
 
-	//TODO - fill in the iSCSI PV details
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: options.PVName,
@@ -151,7 +148,7 @@ func (p *openEBSProvisioner) Delete(volume *v1.PersistentVolume) error {
 		return &controller.IgnoredError{Reason: "identity annotation on PV does not match ours"}
 	}
 
-	//TODO - Issue a delete request to Maya API Server
+	// Issue a delete request to Maya API Server
 	mApiv1.DeleteVsm(volume.Name)
 
 	return nil
@@ -192,12 +189,6 @@ func main() {
 		provisionerName,
 		openEBSProvisioner,
 		serverVersion.GitVersion)
-	// resyncPeriod,
-	// exponentialBackOffOnError,
-	// failedRetryThreshold,
-	// leasePeriod,
-	// renewDeadline,
-	// retryPeriod,
-	// termLimit)
+
 	pc.Run(wait.NeverStop)
 }
