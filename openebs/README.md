@@ -1,10 +1,30 @@
 # OpenEBS Kubernetes PV provisioner
 
-[![Build Status](https://travis-ci.org/openebs/openebs-k8s-provisioner.svg?branch=master)](https://travis-ci.org/openebs/openebs-k8s-provisioner) 
+## About OpenEBS 
 
-This is temporary location for the initial implementation for OpenEBS K8s PV Provisioner, till it gets moved to the kubernetes-incubator/external-storage/(https://github.com/kubernetes-incubator/external-storage/)
+OpenEBS is containerized storage for containers. More details on OpenEBS can be found on [OpenEBS github page](https://github.com/openebs/openebs)
 
+## How to use OpenEBS kubernetes provisioner
 
-## Thanks
-Thanks to the [sample provisioner documentation](https://github.com/kubernetes-incubator/external-storage/tree/master/docs/demo/hostpath-provisioner).
+### Building OpenEBS provisioner
 
+```
+$ make openebs
+```
+
+### Create a docker image on local
+
+```
+$ make push-openebs-provisoner
+```
+
+### Push OpenEBS provisioner image to docker hub
+
+To push docker image to docker hub you need to have docker hub login credentials. You can pass docker credentials and image name as a environment variable.
+
+```
+$ export DIMAGE="docker-username/imagename"
+$ export DNAME="docker-username"
+$ export DPASS="docker-hub-password"
+$ make deploy-openebs-provisioner
+```
