@@ -21,7 +21,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-
 	"syscall"
 
 	"github.com/golang/glog"
@@ -53,7 +52,7 @@ type openEBSProvisioner struct {
 func NewOpenEBSProvisioner(client kubernetes.Interface) controller.Provisioner {
 	nodeName := os.Getenv("NODE_NAME")
 	if nodeName == "" {
-		glog.Fatal("env variable NODE_NAME must be set so that this provisioner can identify itself")
+		glog.Errorf("env variable NODE_NAME must be set so that this provisioner can identify itself")
 	}
 	var openebsObj mApiv1.OpenEBSVolume
 
@@ -61,9 +60,10 @@ func NewOpenEBSProvisioner(client kubernetes.Interface) controller.Provisioner {
 	addr, err := openebsObj.GetMayaClusterIP(client)
 
 	if err != nil {
-		glog.Fatalf("Error getting maya-api-server IP Address: %v", err)
+		glog.Errorf("Error getting maya-api-server IP Address: %v", err)
 		return nil
 	}
+
 	mayaServiceURI := "http://" + addr + ":5656"
 
 	//Set maya-apiserver IP address along with default port
@@ -88,13 +88,13 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 
 	_, err := openebsVol.CreateVsm(options.PVName, volSize.String())
 	if err != nil {
-		glog.Fatalf("Error creating volume: %v", err)
+		glog.Errorf("Error creating volume: %v", err)
 		return nil, err
 	}
 
 	err = openebsVol.ListVsm(options.PVName, &volume)
 	if err != nil {
-		glog.Fatalf("Error getting volume details: %v", err)
+		glog.Errorf("Error getting volume details: %v", err)
 		return nil, err
 	}
 
@@ -184,18 +184,18 @@ func main() {
 	// to use to communicate with Kubernetes
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		glog.Fatalf("Failed to create config: %v", err)
+		glog.Errorf("Failed to create config: %v", err)
 	}
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		glog.Fatalf("Failed to create client: %v", err)
+		glog.Errorf("Failed to create client: %v", err)
 	}
 
 	// The controller needs to know what the server version is because out-of-tree
 	// provisioners aren't officially supported until 1.5
 	serverVersion, err := clientset.Discovery().ServerVersion()
 	if err != nil {
-		glog.Fatalf("Error getting server version: %v", err)
+		glog.Errorf("Error getting server version: %v", err)
 	}
 
 	// Create the provisioner: it implements the Provisioner interface expected by
