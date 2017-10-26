@@ -36,7 +36,12 @@ import (
 )
 
 const (
+	//provisionerName defines name of the provisioner
 	provisionerName = "openebs.io/provisioner-iscsi"
+
+	//defaultProvisionerRetryCount is the number of times openebs provisioner
+	//will try to connect with maya-apiserver
+	defaultProvisionerRetryCount = 30
 )
 
 type openEBSProvisioner struct {
@@ -57,7 +62,7 @@ func NewOpenEBSProvisioner(client kubernetes.Interface) controller.Provisioner {
 	var openebsObj mApiv1.OpenEBSVolume
 
 	//Get maya-apiserver IP address from cluster
-	addr, err := openebsObj.GetMayaClusterIP(client)
+	addr, err := openebsObj.GetMayaClusterIP(client, defaultProvisionerRetryCount, 0)
 
 	if err != nil {
 		glog.Errorf("Error getting maya-api-server IP Address: %v", err)

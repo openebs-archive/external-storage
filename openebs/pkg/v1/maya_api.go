@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -52,7 +53,7 @@ type MayaInterface interface {
 type OpenEBSVolume struct{}
 
 //GetMayaClusterIP returns maya-apiserver IP address
-func (v OpenEBSVolume) GetMayaClusterIP(client kubernetes.Interface) (string, error) {
+func (v OpenEBSVolume) GetMayaClusterIP(client kubernetes.Interface, defaultProvisionerRetryCount, provisionerRetryCount int64) (string, error) {
 	clusterIP := "127.0.0.1"
 
 	glog.Info("Checking maya-apiserver status")
@@ -66,29 +67,48 @@ func (v OpenEBSVolume) GetMayaClusterIP(client kubernetes.Interface) (string, er
 	clusterIP = sc.Spec.ClusterIP
 	glog.Infof("maya-apiserver Cluster IP: %v", clusterIP)
 
-	var url bytes.Buffer
+	url := "http://" + clusterIP + ":5656" + "/latest/meta-data/instance-id"
 
-	addr := clusterIP
+	request, err := http.NewRequest("GET", url, nil)
 
-	url.WriteString("http://" + addr + ":5656" + "/latest/meta-data/instance-id")
-	resp, err := http.Get(url.String())
+	c := &http.Client{
+		Timeout: timeout,
+	}
 
+	resp, err := c.Do(request)
 	if err != nil {
-		glog.Errorf("Error while connecting maya-apiserver %s", err)
-		time.Sleep(5 * time.Second)
-		return v.GetMayaClusterIP(client)
+		glog.Errorf("Error while connecting maya-apiserver: Error %s ", err)
+		glog.Infof("Trying to connect to maya-apiserver again with provisionerRetryCount: %d (To resolve this, launch maya-apiserver deployment)", provisionerRetryCount)
+
+		time.Sleep(20 * time.Second)
+
+		if provisionerRetryCount == defaultProvisionerRetryCount {
+			glog.Infof("Stopped checking for maya-apiserver as defaultProvisionerRetryCount reached provisionerRetryCount : %d", provisionerRetryCount)
+			return "", fmt.Errorf("maya-apiserver is not available %s", err)
+		}
+
+		provisionerRetryCount++
+		return v.GetMayaClusterIP(client, defaultProvisionerRetryCount, provisionerRetryCount)
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 
 	if err != nil {
-		glog.Errorf("maya-apiserver is not available: Error %s , HTTP Status Code: %d", err, resp.StatusCode)
-		time.Sleep(5 * time.Second)
-		return v.GetMayaClusterIP(client)
+		glog.Errorf("maya-apiserver is not available: Error %s ", err)
+		glog.Infof("Trying to connect to maya-apiserver again with provisionerRetryCount: %d (To resolve this, launch maya-apiserver deployment)", provisionerRetryCount)
+
+		time.Sleep(20 * time.Second)
+		if provisionerRetryCount == defaultProvisionerRetryCount {
+			glog.Infof("Stopped checking for maya-apiserver as defaultProvisionerRetryCount reached provisionerRetryCount : %d", provisionerRetryCount)
+			return "", fmt.Errorf("maya-apiserver is not available %s", err)
+		}
+
+		provisionerRetryCount++
+		return v.GetMayaClusterIP(client, defaultProvisionerRetryCount, provisionerRetryCount)
 	}
 
-	glog.V(2).Infof("maya-apiserver is available: Message %s , HTTP Status Code: %d", string(body), http.StatusText(resp.StatusCode))
+	glog.V(2).Infof("maya-apiserver is available: Message %s , HTTP Status Code: %d", string(body), resp.StatusCode)
 	return clusterIP, err
 }
 
