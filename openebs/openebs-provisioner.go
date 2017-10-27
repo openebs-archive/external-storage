@@ -61,7 +61,7 @@ func NewOpenEBSProvisioner(client kubernetes.Interface) controller.Provisioner {
 	addr, err := openebsObj.GetMayaClusterIP(client)
 
 	if err != nil {
-		glog.Errorf("Error getting maya-api-server IP Address: %v", err)
+		glog.Errorf("Error getting maya-apiserver IP Address: %v", err)
 		return nil
 	}
 	mayaServiceURI := "http://" + addr + ":5656"

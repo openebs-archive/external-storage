@@ -58,7 +58,7 @@ func (v OpenEBSVolume) GetMayaClusterIP(client kubernetes.Interface) (string, er
 	//Fetch the Maya ClusterIP using the Maya API Server Service
 	sc, err := client.CoreV1().Services("default").Get("maya-apiserver-service", metav1.GetOptions{})
 	if err != nil {
-		glog.Errorf("Error getting maya-api-server IP Address: %v", err)
+		glog.Errorf("Error getting maya-apiserver IP Address: %v", err)
 	}
 
 	clusterIP = sc.Spec.ClusterIP
@@ -75,8 +75,8 @@ func (v OpenEBSVolume) CreateVsm(vname string, size string) (string, error) {
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
 		err := errors.New("MAPI_ADDR environment variable not set")
-		glog.Errorf("Error getting maya-api-server IP Address: %v", err)
-		return "Error getting maya-api-server IP Address", err
+		glog.Errorf("Error getting maya-apiserver IP Address: %v", err)
+		return "Error getting maya-apiserver IP Address", err
 	}
 	url := addr + "/latest/volumes/"
 
@@ -99,21 +99,21 @@ func (v OpenEBSVolume) CreateVsm(vname string, size string) (string, error) {
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		glog.Errorf("http.Do() error: : %v", err)
-		return "Could not connect to maya-api-server", err
+		glog.Errorf("Error when connecting maya-apiserver %v", err)
+		return "Could not connect to maya-apiserver", err
 	}
 	defer resp.Body.Close()
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		glog.Errorf("ioutil.ReadAll() error: : %v", err)
-		return "Unable to read response from maya-api-server", err
+		glog.Errorf("Unable to read response from maya-apiserver %v", err)
+		return "Unable to read response from maya-apiserver", err
 	}
 
 	code := resp.StatusCode
 	if code != http.StatusOK {
 		glog.Errorf("Status error: %v\n", http.StatusText(code))
-		return "HTTP Status error from maya-api-server", err
+		return "HTTP Status error from maya-apiserver", err
 	}
 
 	glog.Infof("VSM Successfully Created:\n%v\n", string(data))
@@ -126,7 +126,7 @@ func (v OpenEBSVolume) ListVsm(vname string, obj interface{}) error {
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
 		err := errors.New("MAPI_ADDR environment variable not set")
-		glog.Errorf("Error getting maya-api-server IP Address: %v", err)
+		glog.Errorf("Error getting mayaapi-server IP Address: %v", err)
 		return err
 	}
 	url := addr + "/latest/volumes/info/" + vname
@@ -139,14 +139,14 @@ func (v OpenEBSVolume) ListVsm(vname string, obj interface{}) error {
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		glog.Errorf("http.Do() error: : %v", err)
+		glog.Errorf("Error when connecting to maya-apiserver %v", err)
 		return err
 	}
 	defer resp.Body.Close()
 
 	code := resp.StatusCode
 	if code != http.StatusOK {
-		glog.Errorf("Status error: %v\n", http.StatusText(code))
+		glog.Errorf("HTTP Status error from maya-apiserver: %v\n", http.StatusText(code))
 		return err
 	}
 	glog.Info("VSM Details Successfully Retrieved")
@@ -172,14 +172,14 @@ func (v OpenEBSVolume) DeleteVsm(vname string) error {
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		glog.Errorf("http.Do() error: : %v", err)
+		glog.Errorf("Error when connecting to maya-apiserver  %v", err)
 		return err
 	}
 	defer resp.Body.Close()
 
 	code := resp.StatusCode
 	if code != http.StatusOK {
-		glog.Errorf("Status error: %v\n", http.StatusText(code))
+		glog.Errorf("HTTP Status error from maya-apiserver: %v\n", http.StatusText(code))
 		return err
 	}
 	glog.Info("VSM Deleted Successfully initiated")
