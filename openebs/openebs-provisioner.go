@@ -54,7 +54,7 @@ func NewOpenEBSProvisioner(client kubernetes.Interface) controller.Provisioner {
 
 	nodeName := os.Getenv("NODE_NAME")
 	if nodeName == "" {
-		glog.Errorf("env variable NODE_NAME must be set so that this provisioner can identify itself")
+		glog.Errorf("ENV variable 'NODE_NAME' is not set")
 	}
 	var openebsObj mApiv1.OpenEBSVolume
 
