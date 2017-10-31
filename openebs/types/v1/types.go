@@ -23,7 +23,7 @@ type VolumeSpec struct {
 	Metadata   struct {
 		Name   string `yaml:"name"`
 		Labels struct {
-			Storage      string `yaml:"openebs.io/capacity"`
+			Storage      string `yaml:"volumeprovisioner.mapi.openebs.io/storage-size"`
 			StorageClass string `yaml:"k8s.io/storage-class"`
 			Namespace    string `yaml:"k8s.io/namespace"`
 		}
