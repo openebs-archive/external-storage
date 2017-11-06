@@ -17,7 +17,7 @@ limitations under the License.
 package v1
 
 import (
-	"bytes" 
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
