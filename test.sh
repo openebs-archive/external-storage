@@ -93,6 +93,8 @@ elif [ "$TEST_SUITE" = "everything-else" ]; then
 	make test-iscsi/targetd
 	make nfs-client
 	make snapshot
+	make test-snapshot
+	make test-openstack/standalone-cinder
 elif [ "$TEST_SUITE" = "local-volume" ]; then
 	make local-volume/provisioner
 	make test-local-volume/provisioner

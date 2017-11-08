@@ -1,12 +1,13 @@
-hash: c93b7bb90a59a66ebfa93614b4d3bc73a46d973db4fcc5212ab1b9da8261132c
-updated: 2017-09-20T20:27:26.578282752-04:00
+hash: 1334daf8f668df5298c2ebb2132e3e45def3f7fdf3f3e4558912a1133424fed4
+updated: 2017-09-27T12:40:51.281879295-04:00
 imports:
 - name: cloud.google.com/go
-  version: 6914032ea644de194c5f05cc04124f111396531c
+  version: 3b1ae45394a234c385be014e9a488f2bb6eef821
   subpackages:
   - compute/metadata
+  - internal
 - name: github.com/aws/aws-sdk-go
-  version: d76e48be81c125ffb3d030020b66d64731d2b9d0
+  version: 93c0610f5cfe455cdccfdbe17bb0276764e62f1f
   subpackages:
   - aws
   - aws/awserr
@@ -45,7 +46,7 @@ imports:
   subpackages:
   - quantile
 - name: github.com/davecgh/go-spew
-  version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
+  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
   subpackages:
   - spew
 - name: github.com/dgrijalva/jwt-go
@@ -100,7 +101,7 @@ imports:
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - name: github.com/go-ini/ini
-  version: c787282c39ac1fc618827141a1f762240def08a3
+  version: 2e44421e256d82ebbf3d4d4fcabe8930b905eff3
 - name: github.com/go-openapi/analysis
   version: b44dc874b601d9e4e2f6e19140e794ba24bead3b
 - name: github.com/go-openapi/jsonpointer
@@ -213,6 +214,40 @@ imports:
   - pbutil
 - name: github.com/mitchellh/mapstructure
   version: db1efb556f84b25a0a13a04aad883943538ad2e0
+- name: github.com/onsi/ginkgo
+  version: 67b9df7f55fe1165fd9ad49aca7754cce01a42b8
+  subpackages:
+  - config
+  - internal/codelocation
+  - internal/containernode
+  - internal/failer
+  - internal/leafnodes
+  - internal/remote
+  - internal/spec
+  - internal/spec_iterator
+  - internal/specrunner
+  - internal/suite
+  - internal/testingtproxy
+  - internal/writer
+  - reporters
+  - reporters/stenographer
+  - reporters/stenographer/support/go-colorable
+  - reporters/stenographer/support/go-isatty
+  - types
+- name: github.com/onsi/gomega
+  version: d59fa0ac68bb5dd932ee8d24eed631cdd519efc3
+  subpackages:
+  - format
+  - internal/assertion
+  - internal/asyncassertion
+  - internal/oraclematcher
+  - internal/testingtsupport
+  - matchers
+  - matchers/support/goraph/bipartitegraph
+  - matchers/support/goraph/edge
+  - matchers/support/goraph/node
+  - matchers/support/goraph/util
+  - types
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/pelletier/go-buffruneio
@@ -228,7 +263,7 @@ imports:
   subpackages:
   - jsonrpc2
 - name: github.com/prometheus/client_golang
-  version: 50b3332fd63be43e38472600ec187ceec39d26d6
+  version: e51041b3fa41cece0dca035740ba6411905be473
   subpackages:
   - prometheus
 - name: github.com/prometheus/client_model
@@ -250,7 +285,7 @@ imports:
 - name: github.com/PuerkitoBio/urlesc
   version: 5bd2802263f21d8788851d5305584c82a5c75d7e
 - name: github.com/Sirupsen/logrus
-  version: 51fe59aca108dc5680109e7b2051cbdcfa5a253c
+  version: 26709e2714106fb8ad40b773b711ebce25b78914
 - name: github.com/spf13/afero
   version: b28a7effac979219c2a2ed6205a4d70e4b1bcd02
   subpackages:
@@ -265,7 +300,7 @@ imports:
 - name: github.com/spf13/pflag
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/spf13/viper
-  version: 25b30aa063fc18e48662b86996252eabdcf2f0c7
+  version: 7fb2782df3d83e0036cc89f461ed0422628776f4
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
@@ -295,7 +330,7 @@ imports:
   - jws
   - jwt
 - name: golang.org/x/sys
-  version: b6e1ae21643682ce023deb8d152024597b0e9bb4
+  version: a2e06a18b0d52d8cb2010e04b372a1965d8e3439
   subpackages:
   - unix
 - name: golang.org/x/text
@@ -314,17 +349,11 @@ imports:
 - name: google.golang.org/api
   version: e3824ed33c72bf7e81da0286772c34b987520914
   subpackages:
-  - cloudmonitoring/v2beta2
-  - compute/v0.beta
   - compute/v1
   - container/v1
-  - dns/v1
   - gensupport
   - googleapi
   - googleapi/internal/uritemplates
-  - logging/v2beta1
-  - monitoring/v3
-  - pubsub/v1
 - name: google.golang.org/appengine
   version: 4f7eeb5305a4ba1966344836ba4af9996b7b4e05
   subpackages:

@@ -18,15 +18,17 @@ package discovery
 
 import (
 	"fmt"
-	"path/filepath"
-	"testing"
-
+	esUtil "github.com/kubernetes-incubator/external-storage/lib/util"
 	"github.com/kubernetes-incubator/external-storage/local-volume/provisioner/pkg/cache"
 	"github.com/kubernetes-incubator/external-storage/local-volume/provisioner/pkg/common"
 	"github.com/kubernetes-incubator/external-storage/local-volume/provisioner/pkg/util"
+	"path/filepath"
+	"testing"
+
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/api/v1/helper"
+	"reflect"
 )
 
 const (
@@ -36,12 +38,27 @@ const (
 	testProvisionerName = "test-provisioner"
 )
 
+var nodeLabels = map[string]string{
+	"failure-domain.beta.kubernetes.io/zone":   "west-1",
+	"failure-domain.beta.kubernetes.io/region": "west",
+	common.NodeLabelKey:                        testNodeName,
+	"label-that-pv-does-not-inherit":           "foo"}
+
+var nodeLabelsForPV = []string{
+	"failure-domain.beta.kubernetes.io/zone",
+	"failure-domain.beta.kubernetes.io/region",
+	common.NodeLabelKey,
+	"non-existent-label-that-pv-will-not-get"}
+
+var expectedPVLabels = map[string]string{
+	"failure-domain.beta.kubernetes.io/zone":   "west-1",
+	"failure-domain.beta.kubernetes.io/region": "west",
+	common.NodeLabelKey:                        testNodeName}
+
 var testNode = &v1.Node{
 	ObjectMeta: metav1.ObjectMeta{
-		Name: testNodeName,
-		Labels: map[string]string{
-			common.NodeLabelKey: testNodeName,
-		},
+		Name:   testNodeName,
+		Labels: nodeLabels,
 	},
 }
 
@@ -224,13 +241,14 @@ func TestDiscoverVolumes_BadVolume(t *testing.T) {
 
 func testSetup(t *testing.T, test *testConfig) *Discoverer {
 	test.cache = cache.NewVolumeCache()
-	test.volUtil = util.NewFakeVolumeUtil(false)
+	test.volUtil = util.NewFakeVolumeUtil(false /*deleteShouldFail*/)
 	test.volUtil.AddNewDirEntries(testMountDir, test.dirLayout)
 	test.apiUtil = util.NewFakeAPIUtil(test.apiShouldFail, test.cache)
 
 	userConfig := &common.UserConfig{
-		Node:         testNode,
-		DiscoveryMap: scMapping,
+		Node:            testNode,
+		DiscoveryMap:    scMapping,
+		NodeLabelsForPV: nodeLabelsForPV,
 	}
 	runConfig := &common.RuntimeConfig{
 		UserConfig: userConfig,
@@ -300,6 +318,17 @@ func verifyNodeAffinity(t *testing.T, pv *v1.PersistentVolume) {
 	}
 }
 
+func verifyPVLabels(t *testing.T, pv *v1.PersistentVolume) {
+	if len(pv.Labels) == 0 {
+		t.Errorf("Labels not set")
+		return
+	}
+	eq := reflect.DeepEqual(pv.Labels, expectedPVLabels)
+	if !eq {
+		t.Errorf("Labels not as expected %v != %v", pv.Labels, expectedPVLabels)
+	}
+}
+
 func verifyProvisionerName(t *testing.T, pv *v1.PersistentVolume) {
 	if len(pv.Annotations) == 0 {
 		t.Errorf("Annotations not set")
@@ -324,7 +353,7 @@ func verifyCapacity(t *testing.T, createdPV *v1.PersistentVolume, expectedPV *te
 	if !ok {
 		t.Errorf("Unable to convert resource storage into int64")
 	}
-	if capacityInt != expectedPV.capacity {
+	if roundDownCapacityPretty(capacityInt) != expectedPV.capacity {
 		t.Errorf("Expected capacity %d, got %d", expectedPV.capacity, capacityInt)
 	}
 }
@@ -377,6 +406,7 @@ func verifyCreatedPVs(t *testing.T, test *testConfig) {
 
 		verifyProvisionerName(t, createdPV)
 		verifyNodeAffinity(t, createdPV)
+		verifyPVLabels(t, createdPV)
 		verifyCapacity(t, createdPV, expectedPV)
 		// TODO: Verify volume type once that is supported in the API.
 	}
@@ -390,6 +420,34 @@ func verifyPVsNotInCache(t *testing.T, test *testConfig) {
 			if exists {
 				t.Errorf("Expected PV %q to not be in cache", pvName)
 			}
+		}
+	}
+}
+
+func TestRoundDownCapacityPretty(t *testing.T) {
+	var capTests = []struct {
+		n        int64 // input
+		expected int64 // expected result
+	}{
+		{100 * esUtil.KiB, 100 * esUtil.KiB},
+		{10 * esUtil.MiB, 10 * esUtil.MiB},
+		{100 * esUtil.MiB, 100 * esUtil.MiB},
+		{10 * esUtil.GiB, 10 * esUtil.GiB},
+		{10 * esUtil.TiB, 10 * esUtil.TiB},
+		{9*esUtil.GiB + 999*esUtil.MiB, 9*esUtil.GiB + 999*esUtil.MiB},
+		{10*esUtil.GiB + 5, 10 * esUtil.GiB},
+		{10*esUtil.MiB + 5, 10 * esUtil.MiB},
+		{10000*esUtil.MiB - 1, 9999 * esUtil.MiB},
+		{13*esUtil.GiB - 1, 12 * esUtil.GiB},
+		{63*esUtil.MiB - 10, 62 * esUtil.MiB},
+		{12345, 12345},
+		{10000*esUtil.GiB - 1, 9999 * esUtil.GiB},
+		{3*esUtil.TiB + 2*esUtil.GiB + 1*esUtil.MiB, 3*esUtil.TiB + 2*esUtil.GiB},
+	}
+	for _, tt := range capTests {
+		actual := roundDownCapacityPretty(tt.n)
+		if actual != tt.expected {
+			t.Errorf("roundDownCapacityPretty(%d): expected %d, actual %d", tt.n, tt.expected, actual)
 		}
 	}
 }

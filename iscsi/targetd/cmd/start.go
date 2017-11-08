@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/kubernetes-incubator/external-storage/iscsi/targetd/provisioner"
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
@@ -26,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var log = logrus.New()
@@ -33,21 +35,22 @@ var log = logrus.New()
 // start-controllerCmd represents the start-controller command
 var startcontrollerCmd = &cobra.Command{
 	Use:   "start",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Start an iscsi dynamic provisioner",
+	Long:  `Start an iscsi dynamic provisioner`,
 	Run: func(cmd *cobra.Command, args []string) {
 		initLog()
-
 		log.Debugln("start called")
-
+		var config *rest.Config
+		var err error
+		master := viper.GetString("master")
+		kubeconfig := viper.GetString("kubeconfig")
 		// creates the in-cluster config
 		log.Debugln("creating in cluster default kube client config")
-		config, err := rest.InClusterConfig()
+		if master != "" || kubeconfig != "" {
+			config, err = clientcmd.BuildConfigFromFlags(master, kubeconfig)
+		} else {
+			config, err = rest.InClusterConfig()
+		}
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -55,7 +58,7 @@ to quickly create a Cobra application.`,
 			"config-host": config.Host,
 		}).Debugln("kube client config created")
 
-		//	 creates the clientset
+		// creates the clientset
 		log.Debugln("creating kube client set")
 		kubernetesClientSet, err := kubernetes.NewForConfig(config)
 		if err != nil {
@@ -70,18 +73,14 @@ to quickly create a Cobra application.`,
 			log.Fatalf("Error getting server version: %v", err)
 		}
 
-		//url := viper.GetString("targetd-scheme") + "://" + viper.GetString("targetd-username") + ":" + viper.GetString("targetd-password") + "@" + viper.GetString("targetd-address") + ":" + viper.GetInt("targetd-port")
-
 		url := fmt.Sprintf("%s://%s:%s@%s:%d/targetrpc", viper.GetString("targetd-scheme"), viper.GetString("targetd-username"), viper.GetString("targetd-password"), viper.GetString("targetd-address"), viper.GetInt("targetd-port"))
 
 		log.Debugln("targed URL", url)
 
 		iscsiProvisioner := provisioner.NewiscsiProvisioner(url)
 		log.Debugln("iscsi provisioner created")
+
 		pc := controller.NewProvisionController(kubernetesClientSet, viper.GetString("provisioner-name"), iscsiProvisioner, serverVersion.GitVersion)
-		//		pc := controller.NewProvisionController(kubernetesClientSet, viper.GetDuration("resync-period"), viper.GetString("provisioner-name"), iscsiProvisioner, serverVersion.GitVersion,
-		//			viper.GetBool("exponential-backoff-on-error"), viper.GetInt("fail-retry-threshold"), viper.GetDuration("lease-period"),
-		//			viper.GetDuration("renew-deadline"), viper.GetDuration("retry-priod"), viper.GetDuration("term-limit"))
 		controller.ResyncPeriod(viper.GetDuration("resync-period"))
 		controller.ExponentialBackOffOnError(viper.GetBool("exponential-backoff-on-error"))
 		controller.FailedProvisionThreshold(viper.GetInt("fail-retry-threshold"))
@@ -125,17 +124,10 @@ func init() {
 	viper.BindPFlag("targetd-port", startcontrollerCmd.Flags().Lookup("targetd-port"))
 	startcontrollerCmd.Flags().String("default-fs", "xfs", "filesystem to use when not specified")
 	viper.BindPFlag("default-fs", startcontrollerCmd.Flags().Lookup("default-fs"))
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// start-controllerCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// start-controllerCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-
+	startcontrollerCmd.Flags().String("master", "", "Master URL")
+	viper.BindPFlag("master", startcontrollerCmd.Flags().Lookup("master"))
+	startcontrollerCmd.Flags().String("kubeconfig", "", "Absolute path to the kubeconfig")
+	viper.BindPFlag("kubeconfig", startcontrollerCmd.Flags().Lookup("kubeconfig"))
 }
 
 func initLog() {

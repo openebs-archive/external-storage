@@ -24,6 +24,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/kubernetes-incubator/external-storage/local-volume/provisioner/pkg/common"
 
+	esUtil "github.com/kubernetes-incubator/external-storage/lib/util"
 	"k8s.io/api/core/v1"
 	"k8s.io/kubernetes/pkg/api/v1/helper"
 )
@@ -32,6 +33,7 @@ import (
 // It looks for volumes in the directories specified in the discoveryMap
 type Discoverer struct {
 	*common.RuntimeConfig
+	Labels          map[string]string
 	nodeAffinityAnn string
 }
 
@@ -47,7 +49,19 @@ func NewDiscoverer(config *common.RuntimeConfig) (*Discoverer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to convert node affinity to alpha annotation: %v", err)
 	}
-	return &Discoverer{RuntimeConfig: config, nodeAffinityAnn: tmpAnnotations[v1.AlphaStorageNodeAffinityAnnotation]}, nil
+
+	labelMap := make(map[string]string)
+	for _, labelName := range config.NodeLabelsForPV {
+		labelVal, ok := config.Node.Labels[labelName]
+		if ok {
+			labelMap[labelName] = labelVal
+		}
+	}
+
+	return &Discoverer{
+		RuntimeConfig:   config,
+		Labels:          labelMap,
+		nodeAffinityAnn: tmpAnnotations[v1.AlphaStorageNodeAffinityAnnotation]}, nil
 }
 
 func generateNodeAffinity(node *v1.Node) (*v1.NodeAffinity, error) {
@@ -164,10 +178,11 @@ func (d *Discoverer) createPV(file, class string, config common.MountConfig, cap
 	pvSpec := common.CreateLocalPVSpec(&common.LocalPVConfig{
 		Name:            pvName,
 		HostPath:        outsidePath,
-		Capacity:        capacityByte,
+		Capacity:        roundDownCapacityPretty(capacityByte),
 		StorageClass:    class,
 		ProvisionerName: d.Name,
 		AffinityAnn:     d.nodeAffinityAnn,
+		Labels:          d.Labels,
 	})
 
 	_, err := d.APIUtil.CreatePV(pvSpec)
@@ -176,4 +191,21 @@ func (d *Discoverer) createPV(file, class string, config common.MountConfig, cap
 		return
 	}
 	glog.Infof("Created PV %q for volume at %q", pvName, outsidePath)
+}
+
+// Round down the capacity to an easy to read value.
+func roundDownCapacityPretty(capacityBytes int64) int64 {
+
+	easyToReadUnitsBytes := []int64{esUtil.GiB, esUtil.MiB}
+
+	// Round down to the nearest easy to read unit
+	// such that there are at least 10 units at that size.
+	for _, easyToReadUnitBytes := range easyToReadUnitsBytes {
+		// Round down the capacity to the nearest unit.
+		size := capacityBytes / easyToReadUnitBytes
+		if size >= 10 {
+			return size * easyToReadUnitBytes
+		}
+	}
+	return capacityBytes
 }

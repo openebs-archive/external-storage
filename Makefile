@@ -15,10 +15,11 @@
 all: aws/efs ceph/cephfs ceph/rbd flex gluster/block gluster/glusterfs iscsi/targetd local-volume/provisioner local-volume/bootstrapper nfs-client nfs snapshot openstack/standalone-cinder
 .PHONY: all
 
-clean: clean-aws/efs clean-ceph/cephfs clean-ceph/rbd clean-flex clean-gluster/block clean-gluster/glusterfs clean-iscsi/targetd clean-local-volume/provisioner clean-local-volume/bootstrapper clean-nfs-client clean-nfs clean-snapshot clean-openstack/standalone-cinder
+clean: clean-aws/efs clean-ceph/cephfs clean-ceph/rbd clean-flex clean-gluster/block clean-gluster/glusterfs clean-iscsi/targetd clean-local-volume/provisioner clean-local-volume/bootstrapper clean-nfs-client clean-nfs clean-openebs clean-snapshot clean-openstack/standalone-cinder
 .PHONY: clean
 
-test: test-aws/efs test-local-volume/provisioner test-nfs
+
+test: test-aws/efs test-local-volume/provisioner test-nfs test-snapshot test-openstack/standalone-cinder
 .PHONY: test
 
 verify:
@@ -176,10 +177,20 @@ openstack/standalone-cinder:
 	make
 .PHONY: openstack/standalone-cinder
 
+test-openstack/standalone-cinder:
+	cd openstack/standalone-cinder; \
+	make test
+.PHONY: test-openstack/standalone-cinder
+
 clean-openstack/standalone-cinder:
 	cd openstack/standalone-cinder; \
 	make clean
 .PHONY: clean-openstack/standalone-cinder
+
+test-snapshot:
+	cd snapshot; \
+	make test
+.PHONY: test-snapshot
 
 push-cephfs-provisioner:
 	cd ceph/cephfs; \
