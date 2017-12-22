@@ -39,6 +39,9 @@ import (
 
 const (
 	provisionerName = "openebs.io/provisioner-iscsi"
+	// BetaStorageClassAnnotation represents the beta/previous StorageClass annotation.
+	// It's currently still used and will be held for backwards compatibility
+	BetaStorageClassAnnotation = "volume.beta.kubernetes.io/storage-class"
 )
 
 type openEBSProvisioner struct {
@@ -90,7 +93,12 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 	volSize := options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	volumeSpec.Metadata.Labels.Storage = volSize.String()
 
-	volumeSpec.Metadata.Labels.StorageClass = *options.PVC.Spec.StorageClassName
+	className := GetPersistentVolumeClass(options)
+
+	if *className == "" {
+		glog.Errorf("Volume has no storage class specified")
+	}
+	volumeSpec.Metadata.Labels.StorageClass = *className
 	volumeSpec.Metadata.Labels.Namespace = options.PVC.Namespace
 	volumeSpec.Metadata.Name = options.PVName
 
@@ -239,4 +247,14 @@ func main() {
 		os.Exit(1) //Exit if provisioner not created.
 	}
 
+}
+
+// GetPersistentVolumeClass returns StorageClassName.
+func GetPersistentVolumeClass(options controller.VolumeOptions) *string {
+	// Use beta annotation first
+	if class, found := options.Parameters[BetaStorageClassAnnotation]; found {
+		return &class
+	}
+
+	return options.PVC.Spec.StorageClassName
 }

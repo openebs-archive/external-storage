@@ -17,7 +17,29 @@ directories by creating and cleaning up PersistentVolumes for each volume.
 
 ## Feature Status
 
-Current status: 1.7 & 1.8 - Alpha
+### 1.9: Alpha
+
+**Important:** Both `PersistentLocalVolumes` and `VolumeScheduling` [feature gates
+must be enabled starting in 1.9](#enabling-the-alpha-feature-gates).
+
+What works:
+* Everything in 1.7.
+* New StorageClass `volumeBindingMode` parameter that fixes the previous
+  issues:
+    * Multiple local PVCs in a single pod.
+    * PVC binding is delayed until pod scheduling and takes into account all the
+      pod's scheduling requirements.
+
+What doesn't work:
+* If you prebind a PVC (by setting PVC.VolumeName) at the same time that another
+Pod is being scheduled, it's possible that the Pod's PVCs will encounter a partial
+binding failure.  Manual recovery is needed in this situation.
+    * Workarounds:
+         * Don't prebind PVCs and have Kubernetes bind volumes for the same
+           StorageClass.
+         * Prebind PV upon creation instead.
+
+### 1.7: Alpha
 
 What works:
 * Create a PV specifying a directory with node affinity.
@@ -37,13 +59,17 @@ What doesn't work and workarounds:
         * Give your pods high priority.
         * Run a workaround controller that unbinds PVCs for pods that are
           stuck pending. TODO: add link
-* External provisioner cannot correctly detect capacity of mounts added after it
-  has been started.
-    * This requires mount propagation to work, which is targeted for 1.9.
-    * Workaround: Before adding any new mount points, stop the daemonset, add
-      the new mount points, start the daemonset.
+* The provisioner will not correctly detect mounts added after it
+  has been started without mount propogation.
+  * This issue is resolved in provisioner 2.0 when the mount propagation
+  alpha feature gate is enabled, which is available in Kubernetes 1.8+.
+  * The provisioner 1.x will detect the existance of a new directory in the
+  discovery directory. Then, it will incorrectly create a local PV with
+  the root filesystem capacity. 
+  * Provisioner 1.x workaround: Before adding any new mount points, stop
+  the provisioner daemonset, add the new mount points, start the daemonset.
 
-Future features:
+### Future features
 * Local block devices as a volume source, with partitioning and fs formatting
 * Pod accessing local raw block device
 * Local PV health monitoring, taints and tolerations
@@ -54,17 +80,51 @@ Future features:
 
 ### Step 1: Bringing up a cluster with local disks
 
+#### Enabling the alpha feature gates
+
+##### 1.7
+```
+$ export KUBE_FEATURE_GATES="PersistentLocalVolumes=true"
+```
+
+##### 1.8
+```
+$ export KUBE_FEATURE_GATES="PersistentLocalVolumes=true,MountPropagation=true"
+```
+
+##### 1.9+
+```
+$ export KUBE_FEATURE_GATES="PersistentLocalVolumes=true,VolumeScheduling=true,MountPropagation=true"
+```
+
 #### Option 1: GCE
 
+##### Pre-1.9
+
 ``` console
-KUBE_FEATURE_GATES="PersistentLocalVolumes=true" NODE_LOCAL_SSDS=<n> cluster/kube-up.sh
+$ NODE_LOCAL_SSDS=<n> cluster/kube-up.sh
+# This handles creating the ConfigMap as described below
+$ kubectl create -f bootstrapper/deployment/kubernetes/latest/gce/config-local-ssd.yaml
+```
+
+##### 1.9+
+
+``` console
+$ NODE_LOCAL_SSDS_EXT=<n>,<scsi|nvme>,fs cluster/kube-up.sh
+# This handles creating the StorageClasses and ConfigMap as described below
+$ kubectl create -f bootstrapper/deployment/kubernetes/latest/gce/config-local-ssd-ext.yaml
+$ kubectl create -f bootstrapper/deployment/kubernetes/latest/gce/class-local-ssds.yaml
 ```
 
 #### Option 2: GKE
 
 ``` console
-gcloud container cluster create ... --local-ssd-count=<n> --enable-kubernetes-alpha --cluster-version=1.7.1
-gcloud container node-pools create ... --local-ssd-count=<n>
+$ gcloud container cluster create ... --local-ssd-count=<n> --enable-kubernetes-alpha
+$ gcloud container node-pools create ... --local-ssd-count=<n>
+# This handles creating ConfigMap as described below
+$ kubectl create -f bootstrapper/deployment/kubernetes/latest/gce/config-local-ssd.yaml
+# If running K8s 1.9+, also create the StorageClasses
+$ kubectl create -f bootstrapper/deployment/kubernetes/latest/gce/class-local-ssds.yaml
 ```
 
 #### Option 3: Baremetal environments
@@ -74,7 +134,12 @@ gcloud container node-pools create ... --local-ssd-count=<n>
 2. Mount all the filesystems under one directory per StorageClass. The directories
    are specified in a configmap, see below. By default, the discovery directory is
    `/mnt/disks` and storage class is `local-storage`.
-3. Configure the Kubernetes API Server, controller-manager, scheduler, and all kubelets with the `PersistentLocalVolumes` feature gate.
+3. Configure the Kubernetes API Server, controller-manager, scheduler, and all kubelets
+   with `KUBE_FEATURE_GATES` as described [above](#enabling-the-alpha-feature-gates).
+4. If not using the default Kubernetes scheduler policy, the following
+   predicates must be enabled:
+   * Pre-1.9: `NoVolumeBindConflict`
+   * 1.9+: `VolumeBindingChecker`
 
 #### Option 4: Local test cluster
 
@@ -89,14 +154,21 @@ done
 ```
 
 2. Run the local cluster.
+
 ```console
-$ ALLOW_PRIVILEGED=true LOG_LEVEL=5 FEATURE_GATES=PersistentLocalVolumes=true hack/local-up-cluster.sh
+$ ALLOW_PRIVILEGED=true LOG_LEVEL=5 FEATURE_GATES=$KUBE_FEATURE_GATES hack/local-up-cluster.sh
 ```
 
-3. Continue with [Creating local persistent volumes](#creating-local-persistent-volumes)
-   below.
+### Step 2: Creating a StorageClass (1.9+)
+To delay volume binding until pod scheduling and to handle multiple local PVs in
+a single pod, a StorageClass must to be created with `volumeBindingMode` set to
+`WaitForFirstConsumer`.
 
-### Step 2: Creating local persistent volumes
+```console
+$ kubectl create -f bootstrapper/deployment/kubernetes/example-storageclass.yaml
+```
+
+### Step 3: Creating local persistent volumes
 
 #### Option 1: Bootstrapping the external static provisioner
 
@@ -106,17 +178,19 @@ sample configuration files.
 
 1. Create an admin account with cluster admin priviledge:
 ``` console
-$ kubectl create -f bootstrapper/deployment/kubernetes/admin-account.yaml
+$ kubectl create -f bootstrapper/deployment/kubernetes/<version>/admin-account.yaml
 ```
 
-2. Create a ConfigMap with your local storage configuration details:
-```console
-$ kubectl create -f bootstrapper/deployment/kubernetes/example-config.yaml
+2. Create a ConfigMap with your local storage configuration details.
+``` console
+$ kubectl create -f bootstrapper/deployment/kubernetes/<version>/example-config.yaml
 ```
+**Note**: This configmap is required in order to run the bootstrapper.
+
 
 3. Launch the bootstrapper, which in turn creates static provisioner daemonset:
 ``` console
-$ kubectl create -f bootstrapper/deployment/kubernetes/bootstrapper.yaml
+$ kubectl create -f bootstrapper/deployment/kubernetes/<version>/bootstrapper.yaml
 ```
 
 The bootstrapper launches the external static provisioner, that discovers and creates local-volume PVs.
@@ -222,7 +296,8 @@ go run hack/e2e.go -- -v --test --test_args="--ginkgo.focus=\[Feature:LocalPersi
 
 ### View CI Results
 [GCE Alpha](https://k8s-testgrid.appspot.com/sig-storage#gce-alpha)
-[GCE GCI Alpha](https://k8s-testgrid.appspot.com/sig-storage#gci-gce-alpha)
+
+[GKE Alpha](https://k8s-testgrid.appspot.com/sig-storage#gke-alpha)
 
 
 ## Requirements
