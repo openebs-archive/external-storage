@@ -93,12 +93,13 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 	volSize := options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	volumeSpec.Metadata.Labels.Storage = volSize.String()
 
-	className := GetPersistentVolumeClass(options)
+	className := GetStorageClassName(options)
 
-	if *className == "" {
+	if className == nil {
 		glog.Errorf("Volume has no storage class specified")
+	} else {
+		volumeSpec.Metadata.Labels.StorageClass = *className
 	}
-	volumeSpec.Metadata.Labels.StorageClass = *className
 	volumeSpec.Metadata.Labels.Namespace = options.PVC.Namespace
 	volumeSpec.Metadata.Name = options.PVName
 
@@ -250,11 +251,10 @@ func main() {
 }
 
 // GetPersistentVolumeClass returns StorageClassName.
-func GetPersistentVolumeClass(options controller.VolumeOptions) *string {
+func GetStorageClassName(options controller.VolumeOptions) *string {
 	// Use beta annotation first
-	if class, found := options.Parameters[BetaStorageClassAnnotation]; found {
+	if class, found := options.PVC.Annotations[BetaStorageClassAnnotation]; found {
 		return &class
 	}
-
 	return options.PVC.Spec.StorageClassName
 }
