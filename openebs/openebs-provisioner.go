@@ -192,7 +192,7 @@ func (p *openEBSProvisioner) Delete(volume *v1.PersistentVolume) error {
 	}
 
 	// Issue a delete request to Maya API Server
-	err := openebsVol.DeleteVolume(volume.Name, volume.Namespace)
+	err := openebsVol.DeleteVolume(volume.Name, volume.Spec.ClaimRef.Namespace)
 	if err != nil {
 		glog.Errorf("Error while deleting volume: %v", err)
 		return err
