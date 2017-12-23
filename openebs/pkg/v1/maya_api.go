@@ -136,6 +136,10 @@ func (v OpenEBSVolume) ListVolume(vname string, namespace string, obj interface{
 	glog.V(2).Infof("[DEBUG] Get details for Volume :%v", string(vname))
 
 	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
 	req.Header.Set("namespace", namespace)
 
 	c := &http.Client{
@@ -171,6 +175,10 @@ func (v OpenEBSVolume) DeleteVolume(vname string, namespace string) error {
 	glog.V(2).Infof("[DEBUG] Delete Volume :%v", string(vname))
 
 	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
 	req.Header.Set("namespace", namespace)
 
 	c := &http.Client{

@@ -109,7 +109,7 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 		return nil, err
 	}
 
-	err = openebsVol.ListVolume(options.PVName, &volume, options.PVC.Namespace)
+	err = openebsVol.ListVolume(options.PVName, options.PVC.Namespace, &volume)
 	if err != nil {
 		glog.Errorf("Error getting volume details: %v", err)
 		return nil, err
