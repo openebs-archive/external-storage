@@ -109,7 +109,7 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 		return nil, err
 	}
 
-	err = openebsVol.ListVolume(options.PVName, &volume)
+	err = openebsVol.ListVolume(options.PVName, &volume, options.PVC.Namespace)
 	if err != nil {
 		glog.Errorf("Error getting volume details: %v", err)
 		return nil, err
@@ -192,7 +192,7 @@ func (p *openEBSProvisioner) Delete(volume *v1.PersistentVolume) error {
 	}
 
 	// Issue a delete request to Maya API Server
-	err := openebsVol.DeleteVolume(volume.Name)
+	err := openebsVol.DeleteVolume(volume.Name, volume.Namespace)
 	if err != nil {
 		glog.Errorf("Error while deleting volume: %v", err)
 		return err

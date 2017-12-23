@@ -123,7 +123,7 @@ func (v OpenEBSVolume) CreateVolume(vs mayav1.VolumeSpec) (string, error) {
 }
 
 // ListVolume to get the info of Vsm through a API call to m-apiserver
-func (v OpenEBSVolume) ListVolume(vname string, obj interface{}) error {
+func (v OpenEBSVolume) ListVolume(vname string, namespace string, obj interface{}) error {
 
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
@@ -136,6 +136,8 @@ func (v OpenEBSVolume) ListVolume(vname string, obj interface{}) error {
 	glog.V(2).Infof("[DEBUG] Get details for Volume :%v", string(vname))
 
 	req, err := http.NewRequest("GET", url, nil)
+	req.Header.Set("namespace", namespace)
+
 	c := &http.Client{
 		Timeout: timeout,
 	}
@@ -156,7 +158,7 @@ func (v OpenEBSVolume) ListVolume(vname string, obj interface{}) error {
 }
 
 // DeleteVolume to get delete Vsm through a API call to m-apiserver
-func (v OpenEBSVolume) DeleteVolume(vname string) error {
+func (v OpenEBSVolume) DeleteVolume(vname string, namespace string) error {
 
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
@@ -169,6 +171,8 @@ func (v OpenEBSVolume) DeleteVolume(vname string) error {
 	glog.V(2).Infof("[DEBUG] Delete Volume :%v", string(vname))
 
 	req, err := http.NewRequest("GET", url, nil)
+	req.Header.Set("namespace", namespace)
+
 	c := &http.Client{
 		Timeout: timeout,
 	}
