@@ -36,6 +36,7 @@ func MakeSnapshotName(namespace, name string) string {
 // the short name of a snapshot from its full name
 func GetNameAndNameSpaceFromSnapshotName(name string) (string, string, error) {
 	strs := strings.Split(name, "/")
+	fmt.Println("Snapshot name is :", name)
 	if len(strs) != 2 {
 		return "", "", fmt.Errorf("invalid snapshot name")
 	}

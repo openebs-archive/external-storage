@@ -1,5 +1,5 @@
-hash: 308ca3a281d9e935456af511e49c0390f65804a4d76d121eb31770c0e5bbc791
-updated: 2017-11-20T18:25:48.093609352+01:00
+hash: fdd74290b05a75c65fd58b4e1b65a415d005ed26f0cbc95e7da0bb6a57f0d4ac
+updated: 2018-01-09T16:42:16.768425458+05:30
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -7,7 +7,7 @@ imports:
   - compute/metadata
   - internal
 - name: github.com/aws/aws-sdk-go
-  version: e4f7e38b704e3ed0acc4a7f8196b777696f6f1f3
+  version: 5177d71d80f123f6d82aaf762387e39b88c5ba23
   subpackages:
   - aws
   - aws/awserr
@@ -265,6 +265,12 @@ imports:
   - types
 - name: github.com/opencontainers/go-digest
   version: a6d0ee40d4207ea02364bd3b9e8e77b9159ba1eb
+- name: github.com/openebs/maya
+  version: 44065e99479432f864bbd541a347fcd3f32b07d5
+  subpackages:
+  - pkg/nethelper
+  - pkg/util
+  - types/v1
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/pelletier/go-buffruneio
@@ -304,6 +310,8 @@ imports:
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
   version: 5bd2802263f21d8788851d5305584c82a5c75d7e
+- name: github.com/ryanuber/columnize
+  version: abc90934186a77966e2beeac62ed966aac0561d5
 - name: github.com/Sirupsen/logrus
   version: 51fe59aca108dc5680109e7b2051cbdcfa5a253c
 - name: github.com/spf13/afero

@@ -30,11 +30,10 @@ import (
 
 const (
 	openEBSPersistentDiskPluginName = "openebs"
-	openEBSBinary                   = "mayactl"
 )
 
 type openEBSPlugin struct {
-	OpenEBSVolumeInterface
+	OpenEBSVolume
 }
 
 var _ volume.Plugin = &openEBSPlugin{}
@@ -46,7 +45,7 @@ func RegisterPlugin() volume.Plugin {
 
 // GetPluginName gets the name of the volume plugin
 func GetPluginName() string {
-	return "glusterfs"
+	return "openebs"
 }
 
 func (h *openEBSPlugin) Init(_ cloudprovider.Interface) {
@@ -58,8 +57,10 @@ func (h *openEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string
 		return nil, nil, fmt.Errorf("invalid PV spec %v", spec)
 	}
 
-	snapshotName := createSnapshotName(string(pv.Name))
+	//snapshotName := &tags["kubernetes.io/created-for/snapshot/name"]
+	snapshotName := createSnapshotName(pv.Name)
 
+	fmt.Println("PV Name , snapshot Name", pv.Name, snapshotName)
 	_, err := h.CreateSnapshot(pv.Name, snapshotName)
 	if err != nil {
 		glog.Errorf("failed to create snapshot for volume :%v, err: %v", pv.Name, err)
@@ -89,7 +90,7 @@ func (h *openEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string
 	}
 
 	res := &crdv1.VolumeSnapshotDataSource{
-		GlusterSnapshotVolume: &crdv1.GlusterVolumeSnapshotSource{
+		OpenEBSSnapshot: &crdv1.OpenEBSVolumeSnapshotSource{
 			SnapshotID: snapshotName,
 		},
 	}
@@ -97,18 +98,18 @@ func (h *openEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string
 }
 
 func createSnapshotName(pvName string) string {
-	name := pvName + fmt.Sprintf("%d", time.Now().UnixNano())
+	name := pvName + "_" + fmt.Sprintf("%d", time.Now().UnixNano())
 	return name
 }
 
-func (h *openEBSPlugin) SnapshotDelete(src *crdv1.VolumeSnapshotDataSource, pv *v1.PersistentVolume) error {
+func (h *openEBSPlugin) SnapshotDelete(src *crdv1.VolumeSnapshotDataSource, _ *v1.PersistentVolume) error {
 	if src == nil || src.OpenEBSSnapshot == nil {
 		return fmt.Errorf("invalid VolumeSnapshotDataSource: %v", src)
 	}
-
 	snapshotID := src.OpenEBSSnapshot.SnapshotID
 	glog.V(1).Infof("Received snapshot :%v delete request", snapshotID)
-	err := h.DeleteSnapshot(pv.Name, snapshotID)
+
+	_, err := h.DeleteSnapshot(snapshotID)
 	if err != nil {
 		glog.Errorf("failed to delete snapshot: %v, err: %v", snapshotID, err)
 	}
@@ -126,8 +127,7 @@ func (h *openEBSPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData)
 	glog.V(1).Infof("received describe request on snapshot:%v", snapshotID)
 
 	// TODO implement snapshot-info based on snapshotID
-	var pv *v1.Volume
-	resp, err := h.SnapshotInfo(pv.Name, snapshotID)
+	resp, err := h.SnapshotInfo(snapshotData.Spec.PersistentVolumeRef.Name, snapshotID)
 
 	if err != nil {
 		glog.Errorf("failed to describe snapshot:%v", snapshotID)
@@ -136,7 +136,7 @@ func (h *openEBSPlugin) DescribeSnapshot(snapshotData *crdv1.VolumeSnapshotData)
 	glog.V(1).Infof("snapshot details:%v", string(resp))
 
 	if len(snapshotData.Status.Conditions) == 0 {
-		return nil, false, fmt.Errorf("No status condtions in VoluemSnapshotData for gluster snapshot type")
+		return nil, false, fmt.Errorf("No status condtions in VoluemSnapshotData for openebs snapshot type")
 	}
 
 	lastCondIdx := len(snapshotData.Status.Conditions) - 1
@@ -192,7 +192,7 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData, 
 	/*pv := &v1.PersistentVolumeSource{
 		ISCSI: &v1.ISCSIVolumeSource{
 			Path:          newSnapPV,
-			EndpointsName: glusterfsEp,
+			EndpointsName: Ep,
 		},
 	}*/
 	return nil, nil, nil

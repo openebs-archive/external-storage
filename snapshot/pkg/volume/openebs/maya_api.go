@@ -18,6 +18,7 @@ package openebs
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"net/http"
@@ -36,14 +37,17 @@ const (
 )
 
 //OpenEBSVolumeInterface Interface to bind methods
-type OpenEBSVolumeInterface interface {
-	CreateSnapshot(string, string) (string, error)
-	ListSnapshot(string, interface{}) error
-	DeleteSnapshot(string, string) error
-	SnapshotInfo(string, string) (string, error)
-	RestoreSnapshot(string, string) (string, error)
+/*type OpenEBSVolumeInterface interface {
+	// Create an openEBS volume snapshot
+	CreateSnapshot(volName string, snapName string) (string, error)
+	// DeleteSnapshot delete OpenEBS volume snapshot
+	DeleteSnapshot(volName string, snapName string) error
+	//SnapshotInfo
+	SnapshotInfo(volName string, snapName string) (string, error)
+	RestoreSnapshot(volName string, snapName string) (string, error)
+	ListSnapshot(volName string, snapName string, obj interface{}) error
 }
-
+*/
 //MayaInterface interface to hold maya specific methods
 type MayaInterface interface {
 	GetMayaClusterIP(kubernetes.Interface) (string, error)
@@ -74,9 +78,10 @@ func (v OpenEBSVolume) GetMayaClusterIP(client kubernetes.Interface) (string, er
 	return clusterIP, err
 }
 
-// CreateVolume to create the Vsm through a API call to m-apiserver
+// CreateSnapshot to create the Vsm through a API call to m-apiserver
 func (v OpenEBSVolume) CreateSnapshot(volName string, snapName string) (string, error) {
 
+	glog.Infof("Inside method %v : %v", volName, snapName)
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
 		err := errors.New("MAPI_ADDR environment variable not set")
@@ -129,7 +134,7 @@ func (v OpenEBSVolume) CreateSnapshot(volName string, snapName string) (string, 
 }
 
 // ListVolume to get the info of Vsm through a API call to m-apiserver
-/*func (v OpenEBSVolume) SnapshotList(snapname string, namespace string, obj interface{}) error {
+func (v OpenEBSVolume) ListSnapshot(volName string, snapname string, obj interface{}) error {
 
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
@@ -139,14 +144,14 @@ func (v OpenEBSVolume) CreateSnapshot(volName string, snapName string) (string, 
 	}
 	url := addr + "/latest/snapshots/list/"
 
-	glog.V(2).Infof("[DEBUG] Get details for Volume :%v", string(vname))
+	glog.V(2).Infof("[DEBUG] Get details for Volume :%v", string(volName))
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
 
-	req.Header.Set("namespace", namespace)
+	//req.Header.Set("namespace", namespace)
 
 	c := &http.Client{
 		Timeout: timeout,
@@ -166,10 +171,9 @@ func (v OpenEBSVolume) CreateSnapshot(volName string, snapName string) (string, 
 	glog.V(2).Info("volume Details Successfully Retrieved")
 	return json.NewDecoder(resp.Body).Decode(obj)
 }
-*/
 
 // RevertSnapshot revert a snapshot of volume by invoking the API call to m-apiserver
-func RestoreSnapshot(volName string, snapName string) (string, error) {
+func (v OpenEBSVolume) RestoreSnapshot(volName string, snapName string) (string, error) {
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
 		err := errors.New("MAPI_ADDR environment variable not set")
@@ -211,7 +215,17 @@ func RestoreSnapshot(volName string, snapName string) (string, error) {
 		return "HTTP Status error from maya-apiserver", err
 	}
 
-	glog.Infof("Snapshot Successfully Created:\n%v\n", string(data))
-	return "Snapshot Successfully Created", nil
+	glog.Infof("Snapshot Successfully restore:\n%v\n", string(data))
+	return "Snapshot Successfully restore", nil
 
+}
+
+func (v OpenEBSVolume) SnapshotInfo(volName string, snapName string) (string, error) {
+
+	return "Not implemented", nil
+}
+
+func (v OpenEBSVolume) DeleteSnapshot(snapName string) (string, error) {
+
+	return "Not implemented", nil
 }
