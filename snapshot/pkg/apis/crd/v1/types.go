@@ -222,6 +222,12 @@ type CinderVolumeSnapshotSource struct {
 	SnapshotID string `json:"snapshotId"`
 }
 
+// OpenEBSVolumeSnapshotSource is OpenEBS volume snapshot source
+type OpenEBSVolumeSnapshotSource struct {
+	// Unique id of the cinder volume snapshot resource. Used to identify the snapshot in OpenStack
+	SnapshotID string `json:"snapshotId"`
+}
+
 // GCEPersistentDiskSnapshotSource is GCE PD volume snapshot source
 type GCEPersistentDiskSnapshotSource struct {
 	// Unique id of the persistent disk snapshot resource. Used to identify the disk snapshot in GCE
@@ -251,6 +257,9 @@ type VolumeSnapshotDataSource struct {
 	// CinderVolumeSnapshotSource represents Cinder snapshot resource
 	// +optional
 	CinderSnapshot *CinderVolumeSnapshotSource `json:"cinderVolume,omitempty"`
+	// OpenEBSVolumeSnapshotSource represents OpenEBS snapshot resource
+	// +optional
+	OpenEBSSnapshot *OpenEBSVolumeSnapshotSource `json:"openebsVolume,omitempty"`
 }
 
 // GetSupportedVolumeFromPVSpec gets supported volume from PV spec
@@ -269,6 +278,9 @@ func GetSupportedVolumeFromPVSpec(spec *core_v1.PersistentVolumeSpec) string {
 	}
 	if spec.Glusterfs != nil {
 		return "glusterfs"
+	}
+	if spec.ISCSI != nil {
+		return "openebs"
 	}
 	return ""
 }
@@ -289,6 +301,9 @@ func GetSupportedVolumeFromSnapshotDataSpec(spec *VolumeSnapshotDataSpec) string
 	}
 	if spec.GlusterSnapshotVolume != nil {
 		return "glusterfs"
+	}
+	if spec.OpenEBSSnapshot != nil {
+		return "openebs"
 	}
 	return ""
 }
