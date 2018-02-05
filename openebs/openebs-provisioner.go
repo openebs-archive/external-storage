@@ -192,15 +192,16 @@ func main() {
 
 	flag.Parse()
 	flag.Set("logtostderr", "true")
-
-	// Create an InClusterConfig and use it to create a client for the controller
-	// to use to communicate with Kubernetes
-	var config *rest.Config
-	var err error
+	var (
+		config *rest.Config
+		err    error
+	)
 	if *master != "" || *kubeconfig != "" {
 		config, err = clientcmd.BuildConfigFromFlags(*master, *kubeconfig)
 		fmt.Printf("Client config was built using flags: Address: '%s' Kubeconfig: '%s' \n", *master, *kubeconfig)
 	} else {
+		// Create an InClusterConfig and use it to create a client for the controller
+		// to use to communicate with Kubernetes
 		config, err = rest.InClusterConfig()
 	}
 	if err != nil {
