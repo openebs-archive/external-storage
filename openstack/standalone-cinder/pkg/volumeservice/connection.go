@@ -26,6 +26,7 @@ import (
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud/openstack/blockstorage/noauth"
 	"github.com/gophercloud/gophercloud/openstack/identity/v3/extensions/trusts"
 	tokens3 "github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
 	"gopkg.in/gcfg.v1"
@@ -91,11 +92,12 @@ func getConfigFromEnv() cinderConfig {
 
 	return cinderConfig{
 		Global: cinderConfigGlobal{
-			AuthURL:  authURL,
-			Username: os.Getenv("OS_USERNAME"),
-			Password: os.Getenv("OS_PASSWORD"), // TODO: Replace with secret
-			TenantID: os.Getenv("OS_TENANT_ID"),
-			Region:   os.Getenv("OS_REGION_NAME"),
+			AuthURL:    authURL,
+			Username:   os.Getenv("OS_USERNAME"),
+			Password:   os.Getenv("OS_PASSWORD"), // TODO: Replace with secret
+			TenantID:   os.Getenv("OS_TENANT_ID"),
+			Region:     os.Getenv("OS_REGION_NAME"),
+			DomainName: os.Getenv("OS_USER_DOMAIN_NAME"),
 		},
 	}
 }
@@ -173,6 +175,25 @@ func getKeystoneVolumeService(cfg cinderConfig) (*gophercloud.ServiceClient, err
 	return volumeService, nil
 }
 
+func getNoAuthVolumeService(cfg cinderConfig) (*gophercloud.ServiceClient, error) {
+	provider, err := noauth.NewClient(gophercloud.AuthOptions{
+		Username:   cfg.Global.Username,
+		TenantName: cfg.Global.TenantName,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := noauth.NewBlockStorageV2(provider, noauth.EndpointOpts{
+		CinderEndpoint: cfg.Global.CinderEndpoint,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get volume service: %v", err)
+	}
+
+	return client, nil
+}
+
 // GetVolumeService returns a connected cinder client based on configuration
 // specified in configFilePath or the environment.
 func GetVolumeService(configFilePath string) (*gophercloud.ServiceClient, error) {
@@ -182,7 +203,7 @@ func GetVolumeService(configFilePath string) (*gophercloud.ServiceClient, error)
 	}
 
 	if config.Global.CinderEndpoint != "" {
-		return nil, errors.New("Standalone cinder is not yet supported")
+		return getNoAuthVolumeService(config)
 	}
 	return getKeystoneVolumeService(config)
 }
