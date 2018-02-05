@@ -21,6 +21,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"syscall"
 
@@ -39,6 +40,9 @@ import (
 
 const (
 	provisionerName = "openebs.io/provisioner-iscsi"
+	// BetaStorageClassAnnotation represents the beta/previous StorageClass annotation.
+	// It's currently still used and will be held for backwards compatibility
+	BetaStorageClassAnnotation = "volume.beta.kubernetes.io/storage-class"
 )
 
 var (
@@ -95,7 +99,13 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 	volSize := options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	volumeSpec.Metadata.Labels.Storage = volSize.String()
 
-	volumeSpec.Metadata.Labels.StorageClass = *options.PVC.Spec.StorageClassName
+	className := GetStorageClassName(options)
+
+	if className == nil {
+		glog.Errorf("Volume has no storage class specified")
+	} else {
+		volumeSpec.Metadata.Labels.StorageClass = *className
+	}
 	volumeSpec.Metadata.Labels.Namespace = options.PVC.Namespace
 	volumeSpec.Metadata.Name = options.PVName
 
@@ -105,11 +115,15 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 		return nil, err
 	}
 
-	err = openebsVol.ListVolume(options.PVName, &volume)
+	err = openebsVol.ListVolume(options.PVName, options.PVC.Namespace, &volume)
 	if err != nil {
 		glog.Errorf("Error getting volume details: %v", err)
 		return nil, err
 	}
+
+	// Use annotations to specify the context using which the PV was created.
+	volAnnotations := make(map[string]string)
+	volAnnotations["openEBSProvisionerIdentity"] = p.identity
 
 	var iqn, targetPortal string
 
@@ -129,12 +143,36 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 		return nil, fmt.Errorf("Invalid Access Modes: %v, Supported Access Modes: %v", options.PVC.Spec.AccessModes, p.GetAccessModes())
 	}
 
+	// The following will be used by the dashboard, to display links on PV page
+	userLinks := make([]string, 0)
+	localMonitoringURL := os.Getenv("OPENEBS_MONITOR_URL")
+	if localMonitoringURL != "" {
+		localMonitorLinkName := os.Getenv("OPENEBS_MONITOR_LINK_NAME")
+		if localMonitorLinkName == "" {
+			localMonitorLinkName = "monitor"
+		}
+		localMonitorVolKey := os.Getenv("OPENEBS_MONITOR_VOLKEY")
+		if localMonitorVolKey != "" {
+			localMonitoringURL += localMonitorVolKey + "=" + options.PVName
+		}
+		userLinks = append(userLinks, "\""+localMonitorLinkName+"\":\""+localMonitoringURL+"\"")
+	}
+	mayaPortalURL := os.Getenv("MAYA_PORTAL_URL")
+	if mayaPortalURL != "" {
+		mayaPortalLinkName := os.Getenv("MAYA_PORTAL_LINK_NAME")
+		if mayaPortalLinkName == "" {
+			mayaPortalLinkName = "maya"
+		}
+		userLinks = append(userLinks, "\""+mayaPortalLinkName+"\":\""+mayaPortalURL+"\"")
+	}
+	if len(userLinks) > 0 {
+		volAnnotations["alpha.dashboard.kubernetes.io/links"] = "{" + strings.Join(userLinks, ",") + "}"
+	}
+
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: options.PVName,
-			Annotations: map[string]string{
-				"openEBSProvisionerIdentity": p.identity,
-			},
+			Name:        options.PVName,
+			Annotations: volAnnotations,
 		},
 		Spec: v1.PersistentVolumeSpec{
 			PersistentVolumeReclaimPolicy: options.PersistentVolumeReclaimPolicy,
@@ -146,7 +184,7 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 				ISCSI: &v1.ISCSIVolumeSource{
 					TargetPortal: targetPortal,
 					IQN:          iqn,
-					Lun:          1,
+					Lun:          0,
 					FSType:       "ext4",
 					ReadOnly:     false,
 				},
@@ -172,7 +210,7 @@ func (p *openEBSProvisioner) Delete(volume *v1.PersistentVolume) error {
 	}
 
 	// Issue a delete request to Maya API Server
-	err := openebsVol.DeleteVolume(volume.Name)
+	err := openebsVol.DeleteVolume(volume.Name, volume.Spec.ClaimRef.Namespace)
 	if err != nil {
 		glog.Errorf("Error while deleting volume: %v", err)
 		return err
@@ -235,4 +273,13 @@ func main() {
 		os.Exit(1) //Exit if provisioner not created.
 	}
 
+}
+
+// GetPersistentVolumeClass returns StorageClassName.
+func GetStorageClassName(options controller.VolumeOptions) *string {
+	// Use beta annotation first
+	if class, found := options.PVC.Annotations[BetaStorageClassAnnotation]; found {
+		return &class
+	}
+	return options.PVC.Spec.StorageClassName
 }
