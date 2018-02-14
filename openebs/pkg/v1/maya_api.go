@@ -18,8 +18,10 @@ package v1
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -27,6 +29,9 @@ import (
 
 	"github.com/golang/glog"
 	mayav1 "github.com/kubernetes-incubator/external-storage/openebs/types/v1"
+	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
+	"github.com/opentracing/opentracing-go/log"
 	yaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -52,36 +57,53 @@ type MayaInterface interface {
 type OpenEBSVolume struct{}
 
 //GetMayaClusterIP returns maya-apiserver IP address
-func (v OpenEBSVolume) GetMayaClusterIP(client kubernetes.Interface) (string, error) {
+func (v OpenEBSVolume) GetMayaClusterIP(ctx context.Context, client kubernetes.Interface) (string, error) {
+	span, _ := opentracing.StartSpanFromContext(ctx, "get maya cluster IP")
+	defer span.Finish()
 	clusterIP := "127.0.0.1"
-
 	namespace := os.Getenv("OPENEBS_NAMESPACE")
 	if namespace == "" {
 		namespace = "default"
 	}
+	span.LogFields(
+		log.String("event", "get openebs namespace"),
+		log.String("namespace", namespace),
+	)
 
 	glog.Info("OpenEBS volume provisioner namespace ", namespace)
 	//Fetch the Maya ClusterIP using the Maya API Server Service
 	sc, err := client.CoreV1().Services(namespace).Get("maya-apiserver-service", metav1.GetOptions{})
 	if err != nil {
+		span.LogFields(
+			log.String("event", "get maya cluster ip"),
+			log.Error(err),
+		)
 		glog.Errorf("Error getting maya-apiserver IP Address: %v", err)
 	}
 
 	clusterIP = sc.Spec.ClusterIP
 	glog.V(2).Infof("Maya Cluster IP: %v", clusterIP)
-
+	span.SetTag("maya-cluster-ip", clusterIP)
 	return clusterIP, err
 }
 
 // CreateVolume to create the Vsm through a API call to m-apiserver
-func (v OpenEBSVolume) CreateVolume(vs mayav1.VolumeSpec) (string, error) {
+func (v OpenEBSVolume) CreateVolume(ctx context.Context, vs mayav1.VolumeSpec) (string, error) {
+
+	span, _ := opentracing.StartSpanFromContext(ctx, "create volume api call to m-apiserver")
+	defer span.Finish()
 
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
+		span.LogFields(
+			log.String("event", "get m-apiserver address"),
+			log.Error(fmt.Errorf("MAPI_ADDR not-set, MAPI_ADDR : %v", addr)),
+		)
 		err := errors.New("MAPI_ADDR environment variable not set")
 		glog.Errorf("Error getting maya-apiserver IP Address: %v", err)
 		return "Error getting maya-apiserver IP Address", err
 	}
+
 	url := addr + "/latest/volumes/"
 
 	vs.Kind = "PersistentVolumeClaim"
@@ -94,13 +116,34 @@ func (v OpenEBSVolume) CreateVolume(vs mayav1.VolumeSpec) (string, error) {
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(yamlValue))
 
+	if err != nil {
+		span.LogFields(
+			log.Object("event", "post http req to m-apiserver"),
+			log.Error(err),
+		)
+		glog.Errorf("Error when connecting maya-apiserver %v", err)
+		return "Could not connect to maya-apiserver", err
+	}
 	req.Header.Add("Content-Type", "application/yaml")
 
 	c := &http.Client{
 		Timeout: timeout,
 	}
+
+	ext.SpanKindRPCClient.Set(span)
+	ext.HTTPUrl.Set(span, url)
+	ext.HTTPMethod.Set(span, "POST")
+	span.Tracer().Inject(
+		span.Context(),
+		opentracing.HTTPHeaders,
+		opentracing.HTTPHeadersCarrier(req.Header),
+	)
 	resp, err := c.Do(req)
 	if err != nil {
+		span.LogFields(
+			log.Object("event", "send http req to m-apiserver"),
+			log.Error(err),
+		)
 		glog.Errorf("Error when connecting maya-apiserver %v", err)
 		return "Could not connect to maya-apiserver", err
 	}
@@ -108,25 +151,43 @@ func (v OpenEBSVolume) CreateVolume(vs mayav1.VolumeSpec) (string, error) {
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		span.LogFields(
+			log.Object("event", "read response"),
+			log.Error(err),
+		)
 		glog.Errorf("Unable to read response from maya-apiserver %v", err)
 		return "Unable to read response from maya-apiserver", err
 	}
 
 	code := resp.StatusCode
 	if code != http.StatusOK {
+		span.LogFields(
+			log.Object("event", "get response status"),
+			log.Int("status-code", code),
+		)
 		glog.Errorf("Status error: %v\n", http.StatusText(code))
 		return "HTTP Status error from maya-apiserver", err
 	}
 
+	span.LogFields(
+		log.String("event", "create volume"),
+		log.Bool("success", true),
+	)
 	glog.Infof("volume Successfully Created:\n%v\n", string(data))
 	return "volume Successfully Created", nil
 }
 
 // ListVolume to get the info of Vsm through a API call to m-apiserver
-func (v OpenEBSVolume) ListVolume(vname string, namespace string, obj interface{}) error {
+func (v OpenEBSVolume) ListVolume(ctx context.Context, vname string, namespace string, obj interface{}) error {
+	span, _ := opentracing.StartSpanFromContext(ctx, "list volume api call to m-apiserver")
+	defer span.Finish()
 
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
+		span.LogFields(
+			log.String("event", "get mapi addr"),
+			log.Error(fmt.Errorf("MAPI_ADDR not-set, MAPI_ADDR : %v", addr)),
+		)
 		err := errors.New("MAPI_ADDR environment variable not set")
 		glog.Errorf("Error getting mayaapi-server IP Address: %v", err)
 		return err
@@ -137,6 +198,10 @@ func (v OpenEBSVolume) ListVolume(vname string, namespace string, obj interface{
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
+		span.LogFields(
+			log.String("event", "get http req from m-apiserver"),
+			log.Error(err),
+		)
 		return err
 	}
 
@@ -145,8 +210,20 @@ func (v OpenEBSVolume) ListVolume(vname string, namespace string, obj interface{
 	c := &http.Client{
 		Timeout: timeout,
 	}
+	ext.SpanKindRPCClient.Set(span)
+	ext.HTTPUrl.Set(span, url)
+	ext.HTTPMethod.Set(span, "GET")
+	span.Tracer().Inject(
+		span.Context(),
+		opentracing.HTTPHeaders,
+		opentracing.HTTPHeadersCarrier(req.Header),
+	)
 	resp, err := c.Do(req)
 	if err != nil {
+		span.LogFields(
+			log.Object("event", "send http req to m-apiserver"),
+			log.Error(err),
+		)
 		glog.Errorf("Error when connecting to maya-apiserver %v", err)
 		return err
 	}
@@ -154,18 +231,33 @@ func (v OpenEBSVolume) ListVolume(vname string, namespace string, obj interface{
 
 	code := resp.StatusCode
 	if code != http.StatusOK {
+		span.LogFields(
+			log.Object("event", "read response from mapiserver"),
+			log.Error(err),
+		)
 		glog.Errorf("HTTP Status error from maya-apiserver: %v\n", http.StatusText(code))
 		return err
 	}
+	span.LogFields(
+		log.String("event", "list volume"),
+		log.Int("Status-Code", code),
+		log.Bool("success", true),
+	)
 	glog.V(2).Info("volume Details Successfully Retrieved")
 	return json.NewDecoder(resp.Body).Decode(obj)
 }
 
 // DeleteVolume to get delete Vsm through a API call to m-apiserver
-func (v OpenEBSVolume) DeleteVolume(vname string, namespace string) error {
+func (v OpenEBSVolume) DeleteVolume(ctx context.Context, vname string, namespace string) error {
+	span, _ := opentracing.StartSpanFromContext(ctx, "delete-volume-api-call-to-mapiserver")
+	defer span.Finish()
 
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
+		span.LogFields(
+			log.String("event", "get mapi addr"),
+			log.Error(fmt.Errorf("MAPI_ADDR not-set, MAPI_ADDR : %v", addr)),
+		)
 		err := errors.New("MAPI_ADDR environment variable not set")
 		glog.Errorf("Error getting maya-api-server IP Address: %v", err)
 		return err
@@ -176,6 +268,10 @@ func (v OpenEBSVolume) DeleteVolume(vname string, namespace string) error {
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
+		span.LogFields(
+			log.String("event", "get http req to m-apiserver"),
+			log.Error(err),
+		)
 		return err
 	}
 
@@ -184,8 +280,21 @@ func (v OpenEBSVolume) DeleteVolume(vname string, namespace string) error {
 	c := &http.Client{
 		Timeout: timeout,
 	}
+
+	ext.SpanKindRPCClient.Set(span)
+	ext.HTTPUrl.Set(span, url)
+	ext.HTTPMethod.Set(span, "GET")
+	span.Tracer().Inject(
+		span.Context(),
+		opentracing.HTTPHeaders,
+		opentracing.HTTPHeadersCarrier(req.Header),
+	)
 	resp, err := c.Do(req)
 	if err != nil {
+		span.LogFields(
+			log.Object("event", "send http req to m-apiserver"),
+			log.Error(err),
+		)
 		glog.Errorf("Error when connecting to maya-apiserver  %v", err)
 		return err
 	}
@@ -193,9 +302,18 @@ func (v OpenEBSVolume) DeleteVolume(vname string, namespace string) error {
 
 	code := resp.StatusCode
 	if code != http.StatusOK {
+		span.LogFields(
+			log.Object("event", "read response from mapiserver"),
+			log.Error(err),
+		)
 		glog.Errorf("HTTP Status error from maya-apiserver: %v\n", http.StatusText(code))
 		return err
 	}
+	span.LogFields(
+		log.String("event", "delete volume"),
+		log.Int("Status-Code", code),
+		log.Bool("success", true),
+	)
 	glog.Info("volume Deleted Successfully initiated")
 	return nil
 }
