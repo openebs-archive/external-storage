@@ -33,7 +33,10 @@ import (
 	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/volume/awsebs"
 	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/volume/cinder"
 	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/volume/gcepd"
+	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/volume/gluster"
 	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/volume/hostpath"
+	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/volume/openebs"
+
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -293,7 +296,8 @@ func buildVolumePlugins() {
 			glog.Warningf("failed to initialize aws cloudprovider: %v, supported cloudproviders are %#v", err, cloudprovider.CloudProviders())
 		}
 	}
-
+	volumePlugins[gluster.GetPluginName()] = gluster.RegisterPlugin()
 	volumePlugins[hostpath.GetPluginName()] = hostpath.RegisterPlugin()
+	volumePlugins[hostpath.GetPluginName()] = openebs.RegisterPlugin()
 
 }

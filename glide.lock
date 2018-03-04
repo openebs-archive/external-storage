@@ -1,5 +1,5 @@
-hash: 1978c56baf7e45d013c9a8396fff480532b09d0c495f1c7eea17d12e9459fdc1
-updated: 2017-10-27T22:02:49.265783375-04:00
+hash: fdd74290b05a75c65fd58b4e1b65a415d005ed26f0cbc95e7da0bb6a57f0d4ac
+updated: 2018-01-24T11:35:46.187784551+05:30
 imports:
 - name: cloud.google.com/go
   version: 3b1ae45394a234c385be014e9a488f2bb6eef821
@@ -7,7 +7,7 @@ imports:
   - compute/metadata
   - internal
 - name: github.com/aws/aws-sdk-go
-  version: ee1f179877b2daf2aaabf71fa900773bf8842253
+  version: decd990ddc5dcdf2f73309cbcab90d06b996ca28
   subpackages:
   - aws
   - aws/awserr
@@ -51,6 +51,10 @@ imports:
   - spew
 - name: github.com/dgrijalva/jwt-go
   version: 01aeca54ebda6e0fbfafd0a524d234159c05ec20
+- name: github.com/digitalocean/godo
+  version: 77ea48de76a7b31b234d854f15d003c68bb2fb90
+  subpackages:
+  - context
 - name: github.com/docker/distribution
   version: edc3ab29cdff8694dd6feb85cfeb4b5f1b38ed9c
   subpackages:
@@ -123,6 +127,10 @@ imports:
   - ptypes/timestamp
 - name: github.com/google/btree
   version: 7d79101e329e5a3adf994758c578dab82b90c017
+- name: github.com/google/go-querystring
+  version: 9235644dd9e52eeae6fa48efd539fdc351a0af53
+  subpackages:
+  - query
 - name: github.com/google/gofuzz
   version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
 - name: github.com/googleapis/gnostic
@@ -132,10 +140,11 @@ imports:
   - compiler
   - extensions
 - name: github.com/gophercloud/gophercloud
-  version: b4c2377fa77951a0e08163f52dc9b3e206355194
+  version: 6e5b7d64ea59ae3b8fdf0456e73e6c7638200e31
   subpackages:
   - openstack
   - openstack/blockstorage/extensions/volumeactions
+  - openstack/blockstorage/noauth
   - openstack/blockstorage/v2/snapshots
   - openstack/blockstorage/v2/volumes
   - openstack/common/extensions
@@ -256,6 +265,12 @@ imports:
   - types
 - name: github.com/opencontainers/go-digest
   version: a6d0ee40d4207ea02364bd3b9e8e77b9159ba1eb
+- name: github.com/openebs/maya
+  version: 44065e99479432f864bbd541a347fcd3f32b07d5
+  subpackages:
+  - pkg/nethelper
+  - pkg/util
+  - types/v1
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/pelletier/go-buffruneio
@@ -295,6 +310,8 @@ imports:
   version: 8a290539e2e8629dbc4e6bad948158f790ec31f4
 - name: github.com/PuerkitoBio/urlesc
   version: 5bd2802263f21d8788851d5305584c82a5c75d7e
+- name: github.com/ryanuber/columnize
+  version: abc90934186a77966e2beeac62ed966aac0561d5
 - name: github.com/Sirupsen/logrus
   version: 51fe59aca108dc5680109e7b2051cbdcfa5a253c
 - name: github.com/spf13/afero
@@ -312,6 +329,8 @@ imports:
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/spf13/viper
   version: 7fb2782df3d83e0036cc89f461ed0422628776f4
+- name: github.com/tent/http-link-go
+  version: ac974c61c2f990f4115b119354b5e0b47550e888
 - name: golang.org/x/crypto
   version: 81e90905daefcd6fd217b62423c0908922eadb30
   subpackages:
