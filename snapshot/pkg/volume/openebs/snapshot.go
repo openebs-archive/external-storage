@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"time"
 
+	mApiv1 "github.com/kubernetes-incubator/external-storage/openebs/pkg/v1"
+	mayav1 "github.com/kubernetes-incubator/external-storage/openebs/types/v1"
+
 	"github.com/golang/glog"
 	crdv1 "github.com/kubernetes-incubator/external-storage/snapshot/pkg/apis/crd/v1"
 	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/cloudprovider"
@@ -102,14 +105,14 @@ func createSnapshotName(pvName string) string {
 	return name
 }
 
-func (h *openEBSPlugin) SnapshotDelete(src *crdv1.VolumeSnapshotDataSource, _ *v1.PersistentVolume) error {
+func (h *openEBSPlugin) SnapshotDelete(src *crdv1.VolumeSnapshotDataSource, pv *v1.PersistentVolume) error {
 	if src == nil || src.OpenEBSSnapshot == nil {
 		return fmt.Errorf("invalid VolumeSnapshotDataSource: %v", src)
 	}
 	snapshotID := src.OpenEBSSnapshot.SnapshotID
 	glog.V(1).Infof("Received snapshot :%v delete request", snapshotID)
 
-	_, err := DeleteSnapshot("vol123", snapshotID)
+	_, err := h.DeleteSnapshot(snapshotID)
 	if err != nil {
 		glog.Errorf("failed to delete snapshot: %v, err: %v", snapshotID, err)
 	}
@@ -173,14 +176,69 @@ func (h *openEBSPlugin) FindSnapshot(tags *map[string]string) (*crdv1.VolumeSnap
 }
 
 // SnapshotRestore restore to any created snapshot
-func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData, pvc *v1.PersistentVolumeClaim, pvName string, _ map[string]string) (*v1.PersistentVolumeSource, map[string]string, error) {
+func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
+	pvc *v1.PersistentVolumeClaim,
+	pvName string,
+	parameters map[string]string,
+) (*v1.PersistentVolumeSource, map[string]string, error) {
+
 	if snapshotData == nil || snapshotData.Spec.OpenEBSSnapshot == nil {
+		return nil, nil, fmt.Errorf("Invalid Snapshot spec")
+	}
+	if pvc == nil {
+		return nil, nil, fmt.Errorf("Invalid PVC spec")
 	}
 
 	// restore snapshot to a PV
 	snapshotID := snapshotData.Spec.OpenEBSSnapshot.SnapshotID
+	pvRefName := snapshotData.Spec.PersistentVolumeRef.Name
 
-	_, err := h.RestoreSnapshot(pvc.Name, snapshotID)
+	var oldvolume, newvolume mayav1.Volume
+	var openebsVol mApiv1.OpenEBSVolume
+	volumeSpec := mayav1.VolumeSpec{}
+
+	volSize := pvc.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
+	volumeSpec.Metadata.Labels.Storage = volSize.String()
+	volumeSpec.Metadata.Labels.StorageClass = *pvc.Spec.StorageClassName
+	volumeSpec.Metadata.Labels.Namespace = pvc.Namespace
+	volumeSpec.Metadata.Name = pvName
+
+	err := openebsVol.ListVolume(pvRefName, &oldvolume)
+	if err != nil {
+		glog.Errorf("Error getting volume details: %v", err)
+		return nil, nil, err
+	}
+	var cloneIP string
+	for key, value := range oldvolume.Metadata.Annotations.(map[string]interface{}) {
+		switch key {
+		case "vsm.openebs.io/controller-ips":
+			cloneIP = value.(string)
+		}
+	}
+	volumeSpec.CloneIP = cloneIP
+	volumeSpec.SnapshotName = snapshotID
+
+	_, err = openebsVol.CreateVolume(volumeSpec)
+	if err != nil {
+		glog.Errorf("Error creating volume: %v", err)
+		return nil, nil, err
+	}
+	err = openebsVol.ListVolume(pvName, &newvolume)
+	if err != nil {
+		glog.Errorf("Error getting volume details: %v", err)
+		return nil, nil, err
+	}
+
+	var iqn, targetPortal string
+
+	for key, value := range newvolume.Metadata.Annotations.(map[string]interface{}) {
+		switch key {
+		case "vsm.openebs.io/iqn":
+			iqn = value.(string)
+		case "vsm.openebs.io/targetportals":
+			targetPortal = value.(string)
+		}
+	}
 
 	if err != nil {
 		glog.Errorf("snapshot :%v restore failed, err:%v", snapshotID, err)
@@ -189,21 +247,29 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData, 
 
 	glog.V(1).Infof("snapshot restored successfully to: %v", snapshotID)
 
-	/*pv := &v1.PersistentVolumeSource{
+	pv := &v1.PersistentVolumeSource{
 		ISCSI: &v1.ISCSIVolumeSource{
-			Path:          newSnapPV,
-			EndpointsName: Ep,
+			TargetPortal: targetPortal,
+			IQN:          iqn,
+			Lun:          1,
+			FSType:       "ext4",
+			ReadOnly:     false,
 		},
-	}*/
-	return nil, nil, nil
+	}
+	return pv, nil, nil
 }
 
 func (h *openEBSPlugin) VolumeDelete(pv *v1.PersistentVolume) error {
 	if pv == nil || pv.Spec.ISCSI == nil {
 		return fmt.Errorf("invalid VolumeSnapshotDataSource: %v", pv)
 	}
+	var openebsVol mApiv1.OpenEBSVolume
 
-	glog.Errorf("Volume Delete Initiated")
-	//TODO: Delete this volume
+	// Issue a delete request to Maya API Server
+	err := openebsVol.DeleteVolume(pv.Name)
+	if err != nil {
+		glog.Errorf("Error while deleting volume: %v", err)
+		return err
+	}
 	return nil
 }

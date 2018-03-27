@@ -225,7 +225,7 @@ func (v OpenEBSVolume) SnapshotInfo(volName string, snapName string) (string, er
 	return "Not implemented", nil
 }
 
-func DeleteSnapshot(volName string, snapName string) (string, error) {
+func (v OpenEBSVolume) DeleteSnapshot(snapName string) (string, error) {
 
 	return "Not implemented", nil
 }

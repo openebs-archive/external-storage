@@ -298,6 +298,6 @@ func buildVolumePlugins() {
 	}
 	volumePlugins[gluster.GetPluginName()] = gluster.RegisterPlugin()
 	volumePlugins[hostpath.GetPluginName()] = hostpath.RegisterPlugin()
-	volumePlugins[hostpath.GetPluginName()] = openebs.RegisterPlugin()
+	volumePlugins[openebs.GetPluginName()] = openebs.RegisterPlugin()
 
 }
