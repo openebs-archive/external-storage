@@ -120,8 +120,10 @@ func (vs *volumeSnapshotter) getPVFromVolumeSnapshot(uniqueSnapshotName string, 
 		return nil, fmt.Errorf("The PVC name is not specified in snapshot %s", uniqueSnapshotName)
 	}
 	snapNameSpace, _, err := cache.GetNameAndNameSpaceFromSnapshotName(uniqueSnapshotName)
+
+	fmt.Println("Namespace is", snapNameSpace)
 	if err != nil {
-		return nil, fmt.Errorf("Snapshot %s is malformed: %s", uniqueSnapshotName, err)
+		return nil, fmt.Errorf("Snapshot %s is malformed, err is %s", uniqueSnapshotName, err)
 	}
 	pvc, err := vs.coreClient.CoreV1().PersistentVolumeClaims(snapNameSpace).Get(pvcName, metav1.GetOptions{})
 	if err != nil {

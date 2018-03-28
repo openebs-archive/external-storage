@@ -41,6 +41,7 @@ import (
 	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/volume/gcepd"
 	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/volume/gluster"
 	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/volume/hostpath"
+	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/volume/openebs"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 )
 
@@ -139,4 +140,6 @@ func buildVolumePlugins() {
 	}
 	volumePlugins[gluster.GetPluginName()] = gluster.RegisterPlugin()
 	volumePlugins[hostpath.GetPluginName()] = hostpath.RegisterPlugin()
+	volumePlugins[openebs.GetPluginName()] = openebs.RegisterPlugin()
+
 }

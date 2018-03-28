@@ -26,8 +26,10 @@ type VolumeSpec struct {
 			Storage      string `yaml:"volumeprovisioner.mapi.openebs.io/storage-size"`
 			StorageClass string `yaml:"k8s.io/storage-class"`
 			Namespace    string `yaml:"k8s.io/namespace"`
-		}
+		} `yaml:"labels"`
 	} `yaml:"metadata"`
+	CloneIP      string `yaml:"cloneIP"`
+	SnapshotName string `yaml:"snapshotName"`
 }
 
 // Volume is a command implementation struct
@@ -53,4 +55,16 @@ type Volume struct {
 		CreationTimestamp interface{} `json:"creationTimestamp"`
 		Name              string      `json:"name"`
 	} `json:"metadata"`
+}
+
+// SnapshotAPISpec hsolds the config for creating asnapshot of volume
+type SnapshotAPISpec struct {
+	Kind       string `yaml:"kind"`
+	APIVersion string `yaml:"apiVersion"`
+	Metadata   struct {
+		Name string `yaml:"name"`
+	} `yaml:"metadata"`
+	Spec struct {
+		VolumeName string `yaml:"volumeName"`
+	} `yaml:"spec"`
 }
