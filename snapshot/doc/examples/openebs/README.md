@@ -2,6 +2,9 @@
 
 #### Start Snapshot Controller
 
+* Note : Export the Maya-apiserver address as env variable
+`export MAPI_ADDR=http://172.18.0.5:5656`
+
 (assuming you have a running Kubernetes local cluster):
 
 ```
@@ -123,8 +126,19 @@ metadata:
     kubectl create -f examples/openebs/snapshot_sc.yaml
     ```
 
-# Restore a snapshot to a new PV [WIP]
+# Restore a snapshot to a new PV
 
+* Create a PVC that claims a PV based on an existing snapshot
+    ```bash
+    kubectl create -f examples/openebs/snapshot_claim.yaml
+    ```
+* Check that a PV was created
+
+    ```bash
+    kubectl get pv,pvc
+    ```
+
+Snapshots are restored to `/var/openebs/pvc-<name>`.
 
 ### Delete the Snapshot:
 
