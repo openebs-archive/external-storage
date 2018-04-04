@@ -3,10 +3,10 @@ kind: PersistentVolumeClaim
 metadata:
   name: snapshot-pv-provisioning-demo
   annotations:
-    snapshot.alpha.kubernetes.io/snapshot: fastfurious
+    snapshot.alpha.kubernetes.io/snapshot: snapshot-demo
 spec:
   storageClassName: snapshot-promoter
-  accessModes: [ "ReadWriteOnce" ]
+  accessModes: [ "ReadOnlyMany" ]
   resources:
     requests:
       storage: 5Gi

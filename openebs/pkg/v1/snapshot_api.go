@@ -51,7 +51,7 @@ func (v OpenEBSVolume) CreateSnapshot(volName string, snapName string) (string, 
 	//Marshal serializes the value provided into a YAML document
 	yamlValue, _ := yaml.Marshal(snap)
 
-	glog.V(2).Infof("[DEBUG] snapshot Spec Created:\n%v\n", string(yamlValue))
+	glog.V(2).Infof("snapshot Spec Created:\n%v\n", string(yamlValue))
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(yamlValue))
 

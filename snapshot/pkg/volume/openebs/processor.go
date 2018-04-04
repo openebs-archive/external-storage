@@ -18,6 +18,7 @@ package openebs
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	mApiv1 "github.com/kubernetes-incubator/external-storage/openebs/pkg/v1"
@@ -46,6 +47,11 @@ func RegisterPlugin() volume.Plugin {
 	return &openEBSPlugin{}
 }
 
+func init() {
+	// GetMayaService get the maya-service endpoint
+	_ = GetMayaService()
+}
+
 // GetPluginName gets the name of the volume plugin
 func GetPluginName() string {
 	return "openebs"
@@ -60,13 +66,19 @@ func (h *openEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string
 		return nil, nil, fmt.Errorf("invalid PV spec %v", spec)
 	}
 
+	// GetMayaService get the maya-service endpoint
+	//err := GetMayaService()
+	//if err != nil {
+	//	return nil, nil, err
+	//}
+
 	//snapshotName := &tags["kubernetes.io/created-for/snapshot/name"]
 	snapshotName := createSnapshotName(pv.Name)
 
-	fmt.Println("PV Name , snapshot Name", pv.Name, snapshotName)
 	_, err := h.CreateSnapshot(pv.Name, snapshotName)
 	if err != nil {
 		glog.Errorf("failed to create snapshot for volume :%v, err: %v", pv.Name, err)
+		return nil, nil, err
 	}
 	glog.V(1).Info("snapshot %v created successfully", snapshotName)
 
@@ -182,6 +194,11 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 	parameters map[string]string,
 ) (*v1.PersistentVolumeSource, map[string]string, error) {
 
+	// GetMayaService get the maya-service endpoint
+	//err := GetMayaService()
+	//if err != nil {
+	//	return nil, nil, err
+	//}
 	if snapshotData == nil || snapshotData.Spec.OpenEBSSnapshot == nil {
 		return nil, nil, fmt.Errorf("Invalid Snapshot spec")
 	}
@@ -271,5 +288,24 @@ func (h *openEBSPlugin) VolumeDelete(pv *v1.PersistentVolume) error {
 		glog.Errorf("Error while deleting volume: %v", err)
 		return err
 	}
+	return nil
+}
+
+func GetMayaService() error {
+	client, err := GetK8sClient()
+	if err != nil {
+		return err
+	}
+	var openebsObj mApiv1.OpenEBSVolume
+	//Get maya-apiserver IP address from cluster
+	addr, err := openebsObj.GetMayaClusterIP(client)
+	if err != nil {
+		glog.Errorf("Error getting maya-apiserver IP Address: %v", err)
+		return err
+	}
+	mayaServiceURI := "http://" + addr + ":5656"
+	//Set maya-apiserver IP address along with default port
+	os.Setenv("MAPI_ADDR", mayaServiceURI)
+
 	return nil
 }
