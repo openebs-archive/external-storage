@@ -16,12 +16,12 @@
 
 set -e
 
-IMAGEID=$( sudo docker images -q ${DIMAGE}:latest )
+IMAGEID=$( sudo docker images -q ${DIMAGE}:ci )
 
 if [ ! -z "${DNAME}" ] && [ ! -z "${DPASS}" ]; 
 then 
   sudo docker login -u "${DNAME}" -p "${DPASS}"; 
-  sudo docker push ${DIMAGE}:latest ; 
+  sudo docker push ${DIMAGE}:ci ; 
   if [ ! -z "${TRAVIS_TAG}" ] ; 
   then
     #Push the release tag image to docker hub repository

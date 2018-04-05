@@ -61,10 +61,16 @@ func (v OpenEBSVolume) GetMayaClusterIP(client kubernetes.Interface) (string, er
 	}
 
 	glog.Info("OpenEBS volume provisioner namespace ", namespace)
+
 	//Fetch the Maya ClusterIP using the Maya API Server Service
-	sc, err := client.CoreV1().Services(namespace).Get("maya-apiserver-service", metav1.GetOptions{})
+	mayaAPIServiceName := os.Getenv("OPENEBS_MAYA_SERVICE_NAME")
+	if mayaAPIServiceName == "" {
+		mayaAPIServiceName = "maya-apiserver-service"
+	}
+
+	sc, err := client.CoreV1().Services(namespace).Get(mayaAPIServiceName, metav1.GetOptions{})
 	if err != nil {
-		glog.Errorf("Error getting maya-apiserver IP Address: %v", err)
+		glog.Errorf("Error getting IP Address for service - %s : %v", mayaAPIServiceName, err)
 	}
 
 	clusterIP = sc.Spec.ClusterIP
@@ -123,7 +129,7 @@ func (v OpenEBSVolume) CreateVolume(vs mayav1.VolumeSpec) (string, error) {
 }
 
 // ListVolume to get the info of Vsm through a API call to m-apiserver
-func (v OpenEBSVolume) ListVolume(vname string, obj interface{}) error {
+func (v OpenEBSVolume) ListVolume(vname string, namespace string, obj interface{}) error {
 
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
@@ -136,6 +142,12 @@ func (v OpenEBSVolume) ListVolume(vname string, obj interface{}) error {
 	glog.V(2).Infof("[DEBUG] Get details for Volume :%v", string(vname))
 
 	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("namespace", namespace)
+
 	c := &http.Client{
 		Timeout: timeout,
 	}
@@ -156,7 +168,7 @@ func (v OpenEBSVolume) ListVolume(vname string, obj interface{}) error {
 }
 
 // DeleteVolume to get delete Vsm through a API call to m-apiserver
-func (v OpenEBSVolume) DeleteVolume(vname string) error {
+func (v OpenEBSVolume) DeleteVolume(vname string, namespace string) error {
 
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
@@ -169,6 +181,12 @@ func (v OpenEBSVolume) DeleteVolume(vname string) error {
 	glog.V(2).Infof("[DEBUG] Delete Volume :%v", string(vname))
 
 	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("namespace", namespace)
+
 	c := &http.Client{
 		Timeout: timeout,
 	}

@@ -1,22 +1,40 @@
 language: go
+env:
+- CHANGE_MINIKUBE_NONE_USER=true
 go:
   - 1.8.3
 services: docker
 
-env:
-  - TEST_SUITE=local-volume
-  - TEST_SUITE=everything-else
-  - TEST_SUITE=nfs ETCD_VER=v3.0.14 KUBE_VERSION=1.5.4
-  - TEST_SUITE=nfs ETCD_VER=v3.0.17 KUBE_VERSION=1.6.0
-
 install: true
 
-script:
-  - ./test.sh
+before_script:
+  # Download kubectl, which is a requirement for using minikube.
+  - curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.7.5/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+  # Download minikube.
+  - curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 && chmod +x minikube && sudo mv minikube /usr/local/bin/
+  - sudo minikube start --vm-driver=none --kubernetes-version=v1.7.5
+  # Fix the kubectl context, as it's often stale.
+  - minikube update-context
+  # Wait for Kubernetes to be up and ready.
+  - JSONPATH='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{end}'; until kubectl get nodes -o jsonpath="$JSONPATH" 2>&1 | grep -q "Ready=True"; do sleep 1; done
+  # Download and initialize helm.
+  - ./openebs/ci/ubuntu-compile-nsenter.sh && sudo cp .tmp/util-linux-2.30.2/nsenter /usr/bin
+  - curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > get_helm.sh
+  - chmod 700 get_helm.sh
+  - ./get_helm.sh
+  - helm init
 
-deploy:
-  - provider: script
-    script: ./deploy.sh
-    on:
-      tags: true
-      condition: $TEST_SUITE = local-volume
+script:
+  - ./openebs-build.sh
+  # Verify that minkube is setup
+  - kubectl cluster-info
+  - kubectl get deployment
+  - ./openebs-ci.sh
+
+after_success:
+  - ./openebs-deploy.sh
+
+branches:
+  only:
+  - release
+  - /^\d+\.\d+(\.\d+)?(-\S*)?$/

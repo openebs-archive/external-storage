@@ -14,7 +14,7 @@ helm install openebs-charts/openebs --set apiserver.imageTag="ci",apiserver.repl
 
 #Replace this with logic to wait/verify openebs control plane is initialized
 sleep 30
-kubectl get pods --all-namespaces -o yaml
-kubectl get svc --all-namespaces -o yaml
+kubectl get pods --all-namespaces
+kubectl get svc --all-namespaces
 
 ./snapshot_test.sh
