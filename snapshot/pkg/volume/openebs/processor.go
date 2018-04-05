@@ -209,6 +209,7 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 	// restore snapshot to a PV
 	snapshotID := snapshotData.Spec.OpenEBSSnapshot.SnapshotID
 	pvRefName := snapshotData.Spec.PersistentVolumeRef.Name
+	pvRefNamespace := snapshotData.Spec.PersistentVolumeRef.Namespace
 
 	var oldvolume, newvolume mayav1.Volume
 	var openebsVol mApiv1.OpenEBSVolume
@@ -220,7 +221,7 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 	volumeSpec.Metadata.Labels.Namespace = pvc.Namespace
 	volumeSpec.Metadata.Name = pvName
 
-	err := openebsVol.ListVolume(pvRefName, &oldvolume)
+	err := openebsVol.ListVolume(pvRefName, pvRefNamespace, &oldvolume)
 	if err != nil {
 		glog.Errorf("Error getting volume details: %v", err)
 		return nil, nil, err
@@ -240,7 +241,7 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 		glog.Errorf("Error creating volume: %v", err)
 		return nil, nil, err
 	}
-	err = openebsVol.ListVolume(pvName, &newvolume)
+	err = openebsVol.ListVolume(pvName, pvc.Namespace, &newvolume)
 	if err != nil {
 		glog.Errorf("Error getting volume details: %v", err)
 		return nil, nil, err
@@ -283,7 +284,7 @@ func (h *openEBSPlugin) VolumeDelete(pv *v1.PersistentVolume) error {
 	}
 	var openebsVol mApiv1.OpenEBSVolume
 
-	err := openebsVol.DeleteVolume(pv.Name)
+	err := openebsVol.DeleteVolume(pv.Name, pv.Spec.ClaimRef.Namespace)
 	if err != nil {
 		glog.Errorf("Error while deleting volume: %v", err)
 		return err
