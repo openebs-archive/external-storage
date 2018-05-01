@@ -47,6 +47,8 @@ const (
 	defaultFSType = "ext4"
 )
 
+var validFSType = map[string]bool{"ext4": true, "xfs": true}
+
 type openEBSProvisioner struct {
 	// Maya-API Server URI running in the cluster
 	mapiURI string
@@ -166,15 +168,9 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 		volAnnotations["alpha.dashboard.kubernetes.io/links"] = "{" + strings.Join(userLinks, ",") + "}"
 	}
 
-	fsType := ""
-	for k, v := range options.Parameters {
-		switch strings.ToLower(k) {
-		case "openebs.io/fstype":
-			fsType = v
-		}
-	}
-	if len(fsType) == 0 {
-		fsType = defaultFSType
+	fsType, err := parseClassParameters(options.Parameters)
+	if err != nil {
+		return nil, err
 	}
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
@@ -292,4 +288,25 @@ func GetStorageClassName(options controller.VolumeOptions) *string {
 		return &class
 	}
 	return options.PVC.Spec.StorageClassName
+}
+
+// parseClassParameters parse storage class parameters to extract key/value
+// pairs
+func parseClassParameters(params map[string]string) (string, error) {
+	var fsType string
+	for k, v := range params {
+		switch strings.ToLower(k) {
+		case "openebs.io/fstype":
+			fsType = v
+		}
+	}
+	if len(fsType) == 0 {
+		fsType = defaultFSType
+	}
+
+	if !validFSType[fsType] {
+		return "", fmt.Errorf("Filesystem %s is not supported", fsType)
+
+	}
+	return fsType, nil
 }
