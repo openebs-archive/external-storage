@@ -43,6 +43,8 @@ const (
 	// BetaStorageClassAnnotation represents the beta/previous StorageClass annotation.
 	// It's currently still used and will be held for backwards compatibility
 	BetaStorageClassAnnotation = "volume.beta.kubernetes.io/storage-class"
+	//defaultFSType
+	defaultFSType = "ext4"
 )
 
 type openEBSProvisioner struct {
@@ -164,6 +166,16 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 		volAnnotations["alpha.dashboard.kubernetes.io/links"] = "{" + strings.Join(userLinks, ",") + "}"
 	}
 
+	fsType := ""
+	for k, v := range options.Parameters {
+		switch strings.ToLower(k) {
+		case "openebs.io/fstype":
+			fsType = v
+		}
+	}
+	if len(fsType) == 0 {
+		fsType = defaultFSType
+	}
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        options.PVName,
@@ -180,7 +192,7 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 					TargetPortal: targetPortal,
 					IQN:          iqn,
 					Lun:          0,
-					FSType:       "ext4",
+					FSType:       fsType,
 					ReadOnly:     false,
 				},
 			},
