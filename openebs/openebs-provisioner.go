@@ -47,6 +47,7 @@ const (
 	defaultFSType = "ext4"
 )
 
+// validFSType represents the valid fstype supported by openebs volume
 var validFSType = map[string]bool{"ext4": true, "xfs": true}
 
 type openEBSProvisioner struct {
@@ -290,7 +291,7 @@ func GetStorageClassName(options controller.VolumeOptions) *string {
 	return options.PVC.Spec.StorageClassName
 }
 
-// parseClassParameters parse storage class parameters to extract key/value
+// parseClassParameters parse storage class parameters to extract required key/value
 // pairs
 func parseClassParameters(params map[string]string) (string, error) {
 	var fsType string
