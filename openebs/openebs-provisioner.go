@@ -48,7 +48,8 @@ const (
 )
 
 // validFSType represents the valid fstype supported by openebs volume
-var validFSType = map[string]bool{"ext4": true, "xfs": true}
+// New supported type can be added using OPENEBS_VALID_FSTYPE env
+var validFSType = []string{"ext4", "xfs"}
 
 type openEBSProvisioner struct {
 	// Maya-API Server URI running in the cluster
@@ -291,8 +292,8 @@ func GetStorageClassName(options controller.VolumeOptions) *string {
 	return options.PVC.Spec.StorageClassName
 }
 
-// parseClassParameters parse storage class parameters to extract required key/value
-// pairs
+// parseClassParameters extract the new fstype other then "ext4"(dafault) which
+// can be changed via "openebs.io/fstype" key and env OPENEBS_VALID_FSTYPE
 func parseClassParameters(params map[string]string) (string, error) {
 	var fsType string
 	for k, v := range params {
@@ -305,9 +306,26 @@ func parseClassParameters(params map[string]string) (string, error) {
 		fsType = defaultFSType
 	}
 
-	if !validFSType[fsType] {
+	//Get openebs supported fstype from ENV variable
+	validENVFSType := os.Getenv("OPENEBS_VALID_FSTYPE")
+	if validENVFSType != "" {
+		slices := strings.Split(validENVFSType, ",")
+		for _, s := range slices {
+			validFSType = append(validFSType, s)
+		}
+	}
+	if !isValid(fsType, validFSType) {
 		return "", fmt.Errorf("Filesystem %s is not supported", fsType)
-
 	}
 	return fsType, nil
+}
+
+// isValid checks the validity of fstype returns true if supported
+func isValid(value string, list []string) bool {
+	for _, v := range list {
+		if v == value {
+			return true
+		}
+	}
+	return false
 }
