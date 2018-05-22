@@ -269,7 +269,7 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 		ISCSI: &v1.ISCSIPersistentVolumeSource{
 			TargetPortal: targetPortal,
 			IQN:          iqn,
-			Lun:          1,
+			Lun:          0,
 			FSType:       "ext4",
 			ReadOnly:     false,
 		},

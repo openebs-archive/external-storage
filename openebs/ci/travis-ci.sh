@@ -14,5 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-$DST_REPO/external-storage/openebs/ci/helm_install_openebs.sh
+#$DST_REPO/external-storage/openebs/ci/helm_install_openebs.sh
+#rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
+
+# Calling snapshot test
+$DST_REPO/external-storage/openebs/ci/snapshot/snapshot_deploy.sh
 rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
+
+

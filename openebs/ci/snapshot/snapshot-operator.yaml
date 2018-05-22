@@ -4,10 +4,11 @@ metadata:
   name: snapshot-controller-runner
   namespace: default
 ---
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
 metadata:
   name: snapshot-controller-role
+  namespace: default
 rules:
   - apiGroups: [""]
     resources: ["pods"]
@@ -38,9 +39,10 @@ rules:
     verbs: ["get"]
 ---
 kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: snapshot-controller
+  namespace: default
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -54,6 +56,7 @@ kind: Deployment
 apiVersion: extensions/v1beta1
 metadata:
   name: snapshot-controller
+  namespace: default
 spec:
   replicas: 1
   strategy:
@@ -66,8 +69,14 @@ spec:
       serviceAccountName: snapshot-controller-runner
       containers:
         - name: snapshot-controller
-          image: openebs/k8s-snapshot-controller
-          imagePullPolicy: Always
+          image: openebs/snapshot-controller:ci
+          imagePullPolicy: "IfNotPresent"
         - name: snapshot-provisioner
-          image: openebs/k8s-snapshot-provisioner
-          imagePullPolicy: Always
+          image: openebs/snapshot-provisioner:ci
+          imagePullPolicy: "IfNotPresent"
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: snapshot-promoter
+provisioner: volumesnapshot.external-storage.k8s.io/snapshot-promoter

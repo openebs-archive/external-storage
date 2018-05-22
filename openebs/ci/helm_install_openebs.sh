@@ -10,11 +10,9 @@ kubectl get pods --all-namespaces
 
 helm repo add openebs-charts https://openebs.github.io/charts/
 helm repo update
-helm install openebs-charts/openebs --set apiserver.imageTag="ci",apiserver.replicas="1",provisioner.imageTag="ci",provisioner.replicas="1",jiva.replicas="1",rbacEnable="false"
+helm install openebs-charts/openebs --namespace default --set apiserver.imageTag="ci",apiserver.replicas="1",provisioner.imageTag="ci",provisioner.replicas="1",jiva.replicas="1"
 
 #Replace this with logic to wait/verify openebs control plane is initialized
 sleep 30
 kubectl get pods --all-namespaces
 kubectl get svc --all-namespaces
-
-./snapshot_test.sh
