@@ -72,9 +72,9 @@ func (h *openEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string
 	//	return nil, nil, err
 	//}
 
-	//snapshotName := &tags["kubernetes.io/created-for/snapshot/name"]
-	snapshotName := createSnapshotName(pv.Name)
-
+	// snapObj is volumesnapshot object name
+	snapObj := (*tags)["kubernetes.io/created-for/snapshot/name"]
+	snapshotName := createSnapshotName(pv.Name, snapObj)
 	_, err := h.CreateSnapshot(pv.Name, snapshotName)
 	if err != nil {
 		glog.Errorf("failed to create snapshot for volume :%v, err: %v", pv.Name, err)
@@ -112,8 +112,9 @@ func (h *openEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string
 	return res, &cond, err
 }
 
-func createSnapshotName(pvName string) string {
-	name := pvName + "_" + fmt.Sprintf("%d", time.Now().UnixNano())
+func createSnapshotName(pvName string, snapObj string) string {
+	name := pvName + "_" + snapObj + "_" + fmt.Sprintf("%d", time.Now().UnixNano())
+
 	return name
 }
 
