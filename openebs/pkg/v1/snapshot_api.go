@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -35,7 +36,6 @@ func (v OpenEBSVolume) CreateSnapshot(volName string, snapName string) (string, 
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
 		err := errors.New("MAPI_ADDR environment variable not set")
-		glog.Errorf("Error getting maya-apiserver IP Address: %v", err)
 		return "Error getting maya-apiserver IP Address", err
 	}
 
@@ -74,6 +74,9 @@ func (v OpenEBSVolume) CreateSnapshot(volName string, snapName string) (string, 
 	}
 
 	code := resp.StatusCode
+	if err == nil && code != http.StatusOK {
+		return "HTTP Status error from maya-apiserver", fmt.Errorf(string(data))
+	}
 	if code != http.StatusOK {
 		glog.Errorf("Status error: %v\n", http.StatusText(code))
 		return "HTTP Status error from maya-apiserver", err
@@ -89,7 +92,6 @@ func (v OpenEBSVolume) ListSnapshot(volName string, snapname string, obj interfa
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
 		err := errors.New("MAPI_ADDR environment variable not set")
-		glog.Errorf("Error getting mayaapi-server IP Address: %v", err)
 		return err
 	}
 	url := addr + "/latest/snapshots/list/"
@@ -112,8 +114,15 @@ func (v OpenEBSVolume) ListSnapshot(volName string, snapname string, obj interfa
 		return err
 	}
 	defer resp.Body.Close()
-
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		glog.Errorf("Unable to read response from maya-apiserver %v", err)
+		return err
+	}
 	code := resp.StatusCode
+	if err == nil && code != http.StatusOK {
+		return fmt.Errorf(string(data))
+	}
 	if code != http.StatusOK {
 		glog.Errorf("HTTP Status error from maya-apiserver: %v\n", http.StatusText(code))
 		return err
@@ -127,7 +136,6 @@ func (v OpenEBSVolume) RevertSnapshot(volName string, snapName string) (string, 
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
 		err := errors.New("MAPI_ADDR environment variable not set")
-		glog.Errorf("Error getting maya-apiserver IP Address: %v", err)
 		return "Error getting maya-apiserver IP Address", err
 	}
 
@@ -160,6 +168,9 @@ func (v OpenEBSVolume) RevertSnapshot(volName string, snapName string) (string, 
 	}
 
 	code := resp.StatusCode
+	if err == nil && code != http.StatusOK {
+		return "HTTP Status error from maya-apiserver", fmt.Errorf(string(data))
+	}
 	if code != http.StatusOK {
 		glog.Errorf("Status error: %v\n", http.StatusText(code))
 		return "HTTP Status error from maya-apiserver", err

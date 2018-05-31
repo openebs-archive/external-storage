@@ -30,6 +30,7 @@ import (
 	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/volume"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/kubernetes/pkg/apis/core"
 )
 
 const (
@@ -211,18 +212,30 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 	snapshotID := snapshotData.Spec.OpenEBSSnapshot.SnapshotID
 	pvRefName := snapshotData.Spec.PersistentVolumeRef.Name
 	pvRefNamespace := snapshotData.Spec.PersistentVolumeRef.Namespace
-
 	var oldvolume, newvolume mayav1.Volume
 	var openebsVol mApiv1.OpenEBSVolume
 	volumeSpec := mayav1.VolumeSpec{}
 
+	// Get the source PV storage class name which will be passed
+	// to maya-apiserver to extract volume policy while restoring snapshot as
+	// new volume.
+	pvRefStorageClass, err := GetStorageClass(pvRefName)
+	if err != nil {
+		glog.Errorf("Error getting volume details: %v", err)
+	}
+	if len(pvRefStorageClass) == 0 {
+		glog.Errorf("Volume has no storage class specified")
+	} else {
+		volumeSpec.Metadata.Labels.StorageClass = pvRefStorageClass
+	}
+	glog.Infof("Using the Storage Class %s for dynamic provisioning", pvRefStorageClass)
+
 	volSize := pvc.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	volumeSpec.Metadata.Labels.Storage = volSize.String()
-	volumeSpec.Metadata.Labels.StorageClass = *pvc.Spec.StorageClassName
 	volumeSpec.Metadata.Labels.Namespace = pvc.Namespace
 	volumeSpec.Metadata.Name = pvName
 
-	err := openebsVol.ListVolume(pvRefName, pvRefNamespace, &oldvolume)
+	err = openebsVol.ListVolume(pvRefName, pvRefNamespace, &oldvolume)
 	if err != nil {
 		glog.Errorf("Error getting volume details: %v", err)
 		return nil, nil, err
@@ -310,4 +323,28 @@ func GetMayaService() error {
 	os.Setenv("MAPI_ADDR", mayaServiceURI)
 
 	return nil
+}
+
+// GetPersistentVolumeClass returns StorageClassName
+func GetPersistentVolumeClass(volume *v1.PersistentVolume) string {
+	// Use beta annotation first
+	if class, found := volume.Annotations[core.BetaStorageClassAnnotation]; found {
+		return class
+	}
+
+	return volume.Spec.StorageClassName
+}
+
+// GetPersistentClass returns StoragClassName
+func GetStorageClass(pvName string) (string, error) {
+	client, err := GetK8sClient()
+	if err != nil {
+		return "", err
+	}
+	volume, err := client.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	glog.Infof("Source Volume is %#v", volume)
+	return GetPersistentVolumeClass(volume), nil
 }
