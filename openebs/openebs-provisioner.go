@@ -108,6 +108,7 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 		volumeSpec.Metadata.Labels.StorageClass = *className
 	}
 	volumeSpec.Metadata.Labels.Namespace = options.PVC.Namespace
+	volumeSpec.Metadata.Labels.PersistantVolumeClaim = options.PVC.ObjectMeta.Name
 	volumeSpec.Metadata.Name = options.PVName
 
 	_, err := openebsVol.CreateVolume(volumeSpec)
