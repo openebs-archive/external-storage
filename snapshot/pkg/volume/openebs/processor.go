@@ -67,16 +67,10 @@ func (h *openEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string
 		return nil, nil, fmt.Errorf("invalid PV spec %v", spec)
 	}
 
-	// GetMayaService get the maya-service endpoint
-	//err := GetMayaService()
-	//if err != nil {
-	//	return nil, nil, err
-	//}
-
 	// snapObj is volumesnapshot object name
 	snapObj := (*tags)["kubernetes.io/created-for/snapshot/name"]
 	snapshotName := createSnapshotName(pv.Name, snapObj)
-	_, err := h.CreateSnapshot(pv.Name, snapshotName)
+	_, err := h.CreateSnapshot(pv.Name, snapshotName, pv.Spec.ClaimRef.Namespace)
 	if err != nil {
 		glog.Errorf("failed to create snapshot for volume :%v, err: %v", pv.Name, err)
 		return nil, nil, err
@@ -196,11 +190,6 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 	parameters map[string]string,
 ) (*v1.PersistentVolumeSource, map[string]string, error) {
 
-	// GetMayaService get the maya-service endpoint
-	//err := GetMayaService()
-	//if err != nil {
-	//	return nil, nil, err
-	//}
 	if snapshotData == nil || snapshotData.Spec.OpenEBSSnapshot == nil {
 		return nil, nil, fmt.Errorf("Invalid Snapshot spec")
 	}
@@ -208,50 +197,12 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 		return nil, nil, fmt.Errorf("Invalid PVC spec")
 	}
 
-	// restore snapshot to a PV
-	snapshotID := snapshotData.Spec.OpenEBSSnapshot.SnapshotID
-	pvRefName := snapshotData.Spec.PersistentVolumeRef.Name
-	pvRefNamespace := snapshotData.Spec.PersistentVolumeRef.Namespace
-	var oldvolume, newvolume mayav1.Volume
+	var newvolume mayav1.Volume
 	var openebsVol mApiv1.OpenEBSVolume
-	volumeSpec := mayav1.VolumeSpec{}
 
-	// Get the source PV storage class name which will be passed
-	// to maya-apiserver to extract volume policy while restoring snapshot as
-	// new volume.
-	pvRefStorageClass, err := GetStorageClass(pvRefName)
-	if err != nil {
-		glog.Errorf("Error getting volume details: %v", err)
-	}
-	if len(pvRefStorageClass) == 0 {
-		glog.Errorf("Volume has no storage class specified")
-	} else {
-		volumeSpec.Metadata.Labels.StorageClass = pvRefStorageClass
-	}
-	glog.Infof("Using the Storage Class %s for dynamic provisioning", pvRefStorageClass)
+	volumeSpec := CreateVolumeSpec(snapshotData, pvc, pvName)
 
-	volSize := pvc.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
-	volumeSpec.Metadata.Labels.Storage = volSize.String()
-	volumeSpec.Metadata.Labels.Namespace = pvc.Namespace
-	volumeSpec.Metadata.Labels.PersistentVolumeClaim = options.PVC.ObjectMeta.Name
-	volumeSpec.Metadata.Name = pvName
-
-	err = openebsVol.ListVolume(pvRefName, pvRefNamespace, &oldvolume)
-	if err != nil {
-		glog.Errorf("Error getting volume details: %v", err)
-		return nil, nil, err
-	}
-	var cloneIP string
-	for key, value := range oldvolume.Metadata.Annotations.(map[string]interface{}) {
-		switch key {
-		case "vsm.openebs.io/controller-ips":
-			cloneIP = value.(string)
-		}
-	}
-	volumeSpec.CloneIP = cloneIP
-	volumeSpec.SnapshotName = snapshotID
-
-	_, err = openebsVol.CreateVolume(volumeSpec)
+	_, err := openebsVol.CreateVolume(volumeSpec)
 	if err != nil {
 		glog.Errorf("Error creating volume: %v", err)
 		return nil, nil, err
@@ -263,7 +214,6 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 	}
 
 	var iqn, targetPortal string
-
 	for key, value := range newvolume.Metadata.Annotations.(map[string]interface{}) {
 		switch key {
 		case "vsm.openebs.io/iqn":
@@ -274,11 +224,11 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 	}
 
 	if err != nil {
-		glog.Errorf("snapshot :%v restore failed, err:%v", snapshotID, err)
-		return nil, nil, fmt.Errorf("failed to restore %s, err: %v", snapshotID, err)
+		glog.Errorf("snapshot :%v restore failed, err:%v", snapshotData.Spec.OpenEBSSnapshot.SnapshotID, err)
+		return nil, nil, fmt.Errorf("failed to restore %s, err: %v", snapshotData.Spec.OpenEBSSnapshot.SnapshotID, err)
 	}
 
-	glog.V(1).Infof("snapshot restored successfully to: %v", snapshotID)
+	glog.V(1).Infof("snapshot restored successfully to: %v", snapshotData.Spec.OpenEBSSnapshot.SnapshotID)
 
 	pv := &v1.PersistentVolumeSource{
 		ISCSI: &v1.ISCSIPersistentVolumeSource{
@@ -346,6 +296,48 @@ func GetStorageClass(pvName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	glog.Infof("Source Volume is %#v", volume)
+	glog.V(2).Infof("Source Volume is %#v", volume)
 	return GetPersistentVolumeClass(volume), nil
+}
+
+// CreateVolumeSpec constructs the volumeSpec for volume create request
+func CreateVolumeSpec(snapshotData *crdv1.VolumeSnapshotData,
+	pvc *v1.PersistentVolumeClaim,
+	pvName string,
+) mayav1.VolumeSpec {
+
+	// restore snapshot to a PV
+	// get the snaphot ID and source volume
+	snapshotID := snapshotData.Spec.OpenEBSSnapshot.SnapshotID
+	pvRefName := snapshotData.Spec.PersistentVolumeRef.Name
+	//pvRefNamespace := snapshotData.Spec.PersistentVolumeRef.Namespace
+	volumeSpec := mayav1.VolumeSpec{}
+
+	// Get the source PV storage class name which will be passed
+	// to maya-apiserver to extract volume policy while restoring snapshot as
+	// new volume.
+	pvRefStorageClass, err := GetStorageClass(pvRefName)
+	if err != nil {
+		glog.Errorf("Error getting volume details: %v", err)
+	}
+	if len(pvRefStorageClass) == 0 {
+		glog.Errorf("Volume has no storage class specified")
+	} else {
+		volumeSpec.Metadata.Labels.StorageClass = pvRefStorageClass
+	}
+	glog.Infof("Using the Storage Class %s for dynamic provisioning", pvRefStorageClass)
+
+	// construct volumespec for volume create request.
+	// Enable volume clone: set clone as true, enables openebs volume to be created
+	// as a clone volume
+	volSize := pvc.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
+	volumeSpec.Metadata.Labels.Storage = volSize.String()
+	volumeSpec.Metadata.Labels.PersistentVolumeClaim = pvc.ObjectMeta.Name
+	volumeSpec.Metadata.Labels.Namespace = pvc.Namespace
+	volumeSpec.Metadata.Name = pvName
+	volumeSpec.SnapshotName = snapshotID
+	volumeSpec.Clone = true
+	volumeSpec.SourceVolume = pvRefName
+
+	return volumeSpec
 }

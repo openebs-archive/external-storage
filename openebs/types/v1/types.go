@@ -29,8 +29,20 @@ type VolumeSpec struct {
 			PersistentVolumeClaim string `yaml:"k8s.io/pvc"`
 		} `yaml:"labels"`
 	} `yaml:"metadata"`
-	CloneIP      string `yaml:"cloneIP"`
-	SnapshotName string `yaml:"snapshotName"`
+	VolumeClone `yaml:"volumeClone"`
+}
+
+type VolumeClone struct {
+	// Defaults to false, true will enable the volume to be created as a clone
+	Clone bool `yaml:"clone,omitempty"`
+	// SourceVolume is snapshotted volume
+	SourceVolume string `yaml:"sourceVolume,omitempty"`
+	// CloneIP is the source controller IP which will be used to make a sync and rebuild
+	// request from the new clone replica.
+	CloneIP string `yaml:"cloneIP,omitempty"`
+	// SnapshotName name of snapshot which is getting promoted as persistent
+	// volume(this snapshot will be cloned to new volume).
+	SnapshotName string `yaml:"snapshotName,omitempty"`
 }
 
 // Volume is a command implementation struct

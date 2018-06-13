@@ -32,7 +32,7 @@ import (
 )
 
 // CreateSnapshot to create the Vsm through a API call to m-apiserver
-func (v OpenEBSVolume) CreateSnapshot(volName string, snapName string) (string, error) {
+func (v OpenEBSVolume) CreateSnapshot(volName string, snapName string, namespace string) (string, error) {
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
 		err := errors.New("MAPI_ADDR environment variable not set")
@@ -57,6 +57,7 @@ func (v OpenEBSVolume) CreateSnapshot(volName string, snapName string) (string, 
 
 	req.Header.Add("Content-Type", "application/yaml")
 
+	req.Header.Set("namespace", namespace)
 	c := &http.Client{
 		Timeout: timeout,
 	}
@@ -87,7 +88,7 @@ func (v OpenEBSVolume) CreateSnapshot(volName string, snapName string) (string, 
 }
 
 // ListVolume to get the info of Vsm through a API call to m-apiserver
-func (v OpenEBSVolume) ListSnapshot(volName string, snapname string, obj interface{}) error {
+func (v OpenEBSVolume) ListSnapshot(volName string, snapname string, namespace string, obj interface{}) error {
 
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
@@ -103,7 +104,7 @@ func (v OpenEBSVolume) ListSnapshot(volName string, snapname string, obj interfa
 		return err
 	}
 
-	//req.Header.Set("namespace", namespace)
+	req.Header.Set("namespace", namespace)
 
 	c := &http.Client{
 		Timeout: timeout,
