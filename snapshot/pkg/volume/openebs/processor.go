@@ -233,6 +233,7 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 	volSize := pvc.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	volumeSpec.Metadata.Labels.Storage = volSize.String()
 	volumeSpec.Metadata.Labels.Namespace = pvc.Namespace
+	volumeSpec.Metadata.Labels.PersistentVolumeClaim = options.PVC.ObjectMeta.Name
 	volumeSpec.Metadata.Name = pvName
 
 	err = openebsVol.ListVolume(pvRefName, pvRefNamespace, &oldvolume)
