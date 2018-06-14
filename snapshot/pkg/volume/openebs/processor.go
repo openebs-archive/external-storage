@@ -76,7 +76,7 @@ func (h *openEBSPlugin) SnapshotCreate(pv *v1.PersistentVolume, tags *map[string
 	// snapObj is volumesnapshot object name
 	snapObj := (*tags)["kubernetes.io/created-for/snapshot/name"]
 	snapshotName := createSnapshotName(pv.Name, snapObj)
-	_, err := h.CreateSnapshot(pv.Name, snapshotName)
+	_, err := h.CreateSnapshot(pv.Name, snapshotName, pv.Spec.ClaimRef.Namespace)
 	if err != nil {
 		glog.Errorf("failed to create snapshot for volume :%v, err: %v", pv.Name, err)
 		return nil, nil, err
@@ -233,7 +233,7 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 	volSize := pvc.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	volumeSpec.Metadata.Labels.Storage = volSize.String()
 	volumeSpec.Metadata.Labels.Namespace = pvc.Namespace
-	volumeSpec.Metadata.Labels.PersistentVolumeClaim = options.PVC.ObjectMeta.Name
+	volumeSpec.Metadata.Labels.PersistentVolumeClaim = pvc.ObjectMeta.Name
 	volumeSpec.Metadata.Name = pvName
 
 	err = openebsVol.ListVolume(pvRefName, pvRefNamespace, &oldvolume)

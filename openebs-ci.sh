@@ -28,6 +28,7 @@ cd $DST_REPO/external-storage/snapshot
 export REGISTRY="openebs/"
 export VERSION="ci"
 make container
+rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
 
 cd $DST_REPO/external-storage/
 $DST_REPO/external-storage/openebs/ci/travis-ci.sh
