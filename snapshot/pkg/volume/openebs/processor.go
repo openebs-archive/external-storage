@@ -19,6 +19,7 @@ package openebs
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	mApiv1 "github.com/kubernetes-incubator/external-storage/openebs/pkg/v1"
@@ -211,11 +212,14 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 	// restore snapshot to a PV
 	snapshotID := snapshotData.Spec.OpenEBSSnapshot.SnapshotID
 	pvRefName := snapshotData.Spec.PersistentVolumeRef.Name
-	pvRefNamespace := snapshotData.Spec.PersistentVolumeRef.Namespace
 	var oldvolume, newvolume mayav1.Volume
 	var openebsVol mApiv1.OpenEBSVolume
 	volumeSpec := mayav1.VolumeSpec{}
 
+	pvRefNamespace, _, err := GetNameAndNameSpaceFromSnapshotName(snapshotData.Spec.VolumeSnapshotRef.Name)
+	if err != nil {
+		return nil, nil, err
+	}
 	// Get the source PV storage class name which will be passed
 	// to maya-apiserver to extract volume policy while restoring snapshot as
 	// new volume.
@@ -348,4 +352,15 @@ func GetStorageClass(pvName string) (string, error) {
 	}
 	glog.Infof("Source Volume is %#v", volume)
 	return GetPersistentVolumeClass(volume), nil
+}
+
+// GetNameAndNameSpaceFromSnapshotName retrieves the namespace and
+// the short name of a snapshot from its full name, for exmaple
+// "test-ns/snap1"
+func GetNameAndNameSpaceFromSnapshotName(name string) (string, string, error) {
+	strs := strings.Split(name, "/")
+	if len(strs) != 2 {
+		return "", "", fmt.Errorf("invalid snapshot name")
+	}
+	return strs[0], strs[1], nil
 }
