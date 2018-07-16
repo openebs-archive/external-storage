@@ -14,16 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package volume
 
 import (
-	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"strings"
-
-	"syscall"
 
 	"github.com/golang/glog"
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
@@ -32,10 +28,7 @@ import (
 	mayav1 "github.com/kubernetes-incubator/external-storage/openebs/types/v1"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -207,87 +200,10 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 	return pv, nil
 }
 
-// Delete removes the storage asset that was created by Provision represented
-// by the given PV.
-func (p *openEBSProvisioner) Delete(volume *v1.PersistentVolume) error {
-
-	var openebsVol mApiv1.OpenEBSVolume
-
-	ann, ok := volume.Annotations["openEBSProvisionerIdentity"]
-	if !ok {
-		return errors.New("identity annotation not found on PV")
-	}
-	if ann != p.identity {
-		return &controller.IgnoredError{Reason: "identity annotation on PV does not match ours"}
-	}
-
-	// Issue a delete request to Maya API Server
-	err := openebsVol.DeleteVolume(volume.Name, volume.Spec.ClaimRef.Namespace)
-	if err != nil {
-		glog.Errorf("Error while deleting volume: %v", err)
-		return err
-	}
-
-	return nil
-}
-
 func (p *openEBSProvisioner) GetAccessModes() []v1.PersistentVolumeAccessMode {
 	return []v1.PersistentVolumeAccessMode{
 		v1.ReadWriteOnce,
 	}
-}
-
-func main() {
-	syscall.Umask(0)
-
-	flag.Parse()
-	flag.Set("logtostderr", "true")
-	var (
-		config     *rest.Config
-		err        error
-		k8sMaster  = mayav1.K8sMasterENV()
-		kubeConfig = mayav1.KubeConfigENV()
-	)
-	if len(k8sMaster) != 0 || len(kubeConfig) != 0 {
-		fmt.Printf("Build client config using k8s Master's Address: '%s' or Kubeconfig: '%s' \n", k8sMaster, kubeConfig)
-		config, err = clientcmd.BuildConfigFromFlags(k8sMaster, kubeConfig)
-	} else {
-		// Create an InClusterConfig and use it to create a client for the controller
-		// to use to communicate with Kubernetes
-		config, err = rest.InClusterConfig()
-	}
-	if err != nil {
-		glog.Errorf("Failed to create config: %v", err)
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		glog.Errorf("Failed to create client: %v", err)
-	}
-
-	// The controller needs to know what the server version is because out-of-tree
-	// provisioners aren't officially supported until 1.5
-	serverVersion, err := clientset.Discovery().ServerVersion()
-	if err != nil {
-		glog.Errorf("Error getting server version: %v", err)
-	}
-
-	// Create the provisioner: it implements the Provisioner interface expected by
-	// the controller
-	openEBSProvisioner := NewOpenEBSProvisioner(clientset)
-	if openEBSProvisioner != nil {
-		// Start the provision controller which will dynamically provision OpenEBS VSM
-		// PVs
-		pc := controller.NewProvisionController(
-			clientset,
-			provisionerName,
-			openEBSProvisioner,
-			serverVersion.GitVersion)
-
-		pc.Run(wait.NeverStop)
-	} else {
-		os.Exit(1) //Exit if provisioner not created.
-	}
-
 }
 
 // GetPersistentVolumeClass returns StorageClassName.

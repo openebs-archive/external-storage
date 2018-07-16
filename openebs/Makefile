@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: image clean bootstrap deps build image
+.PHONY: image clean build push deploy
 .DEFAULT_GOAL := build
 
 
 
-build: $(shell find . -name "*.go")
-	CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' -o openebs-provisioner .
+build:
+	CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' -o openebs-provisioner ./cmd/openebs-provisioner/
 
-push: 
+push:
 	@cp openebs-provisioner buildscripts/docker/
-	@cd buildscripts/docker && sudo docker build -t openebs/openebs-provisioner:ci .
+	@cd buildscripts/docker && sudo docker build -t openebs/openebs-k8s-provisioner:cas .
+
+image: build push
 
 deploy:
 	@cp openebs-provisioner buildscripts/docker/

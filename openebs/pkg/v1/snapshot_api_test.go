@@ -110,7 +110,7 @@ func TestCreateSnapshot(t *testing.T) {
 			defer os.Unsetenv(tt.addr)
 			defer server.Close()
 			var vol OpenEBSVolume
-			resp, err := vol.CreateSnapshot(tt.volumeName, tt.snapName)
+			resp, err := vol.CreateSnapshot(tt.volumeName, tt.snapName, "default")
 			if !reflect.DeepEqual(err, tt.err) {
 				t.Fatalf("CreateSnapshot(%v, %v) => got %v, want %v ", tt.volumeName, tt.snapName, err, tt.err)
 			}
@@ -266,7 +266,7 @@ func TestListSnapshot(t *testing.T) {
 			defer server.Close()
 			var obj interface{}
 			var vol OpenEBSVolume
-			err := vol.ListSnapshot(tt.volumeName, "", obj)
+			err := vol.ListSnapshot(tt.volumeName, "", "default", obj)
 			if !reflect.DeepEqual(err, tt.err) {
 				t.Fatalf("ListSnapshot(%v) => got %v, want %v ", tt.volumeName, err, tt.err)
 			}
