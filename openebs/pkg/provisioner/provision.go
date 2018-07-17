@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package volume
+package provisioner
 
 import (
 	"fmt"
@@ -24,7 +24,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
 	"github.com/kubernetes-incubator/external-storage/lib/util"
-	mApiv1 "github.com/kubernetes-incubator/external-storage/openebs/pkg/v1"
+	mutil "github.com/kubernetes-incubator/external-storage/openebs/pkg/util"
+	mvol "github.com/kubernetes-incubator/external-storage/openebs/pkg/volume"
 	mayav1 "github.com/kubernetes-incubator/external-storage/openebs/types/v1"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,16 +34,7 @@ import (
 
 const (
 	provisionerName = "openebs.io/provisioner-iscsi"
-	// BetaStorageClassAnnotation represents the beta/previous StorageClass annotation.
-	// It's currently still used and will be held for backwards compatibility
-	BetaStorageClassAnnotation = "volume.beta.kubernetes.io/storage-class"
-	//defaultFSType
-	defaultFSType = "ext4"
 )
-
-// validFSType represents the valid fstype supported by openebs volume
-// New supported type can be added using OPENEBS_VALID_FSTYPE env
-var validFSType = []string{"ext4", "xfs"}
 
 type openEBSProvisioner struct {
 	// Maya-API Server URI running in the cluster
@@ -60,7 +52,7 @@ func NewOpenEBSProvisioner(client kubernetes.Interface) controller.Provisioner {
 	if nodeName == "" {
 		glog.Errorf("ENV variable 'NODE_NAME' is not set")
 	}
-	var openebsObj mApiv1.OpenEBSVolume
+	var openebsObj mvol.OpenEBSVolume
 
 	//Get maya-apiserver IP address from cluster
 	addr, err := openebsObj.GetMayaClusterIP(client)
@@ -87,13 +79,13 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 
 	//Issue a request to Maya API Server to create a volume
 	var volume mayav1.Volume
-	var openebsVol mApiv1.OpenEBSVolume
+	var openebsVol mvol.OpenEBSVolume
 	volumeSpec := mayav1.VolumeSpec{}
 
 	volSize := options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	volumeSpec.Metadata.Labels.Storage = volSize.String()
 
-	className := GetStorageClassName(options)
+	className := mutil.GetStorageClassName(options)
 
 	if className == nil {
 		glog.Errorf("Volume has no storage class specified")
@@ -121,10 +113,6 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 		return nil, err
 	}
 
-	// Use annotations to specify the context using which the PV was created.
-	volAnnotations := make(map[string]string)
-	volAnnotations["openEBSProvisionerIdentity"] = p.identity
-
 	var iqn, targetPortal string
 
 	for key, value := range volume.Metadata.Annotations.(map[string]interface{}) {
@@ -139,37 +127,16 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 	glog.V(2).Infof("Volume IQN: %v , Volume Target: %v", iqn, targetPortal)
 
 	if !util.AccessModesContainedInAll(p.GetAccessModes(), options.PVC.Spec.AccessModes) {
-		glog.V(1).Info("Invalid Access Modes: %v, Supported Access Modes: %v", options.PVC.Spec.AccessModes, p.GetAccessModes())
+		glog.Errorf("Invalid Access Modes: %v, Supported Access Modes: %v", options.PVC.Spec.AccessModes, p.GetAccessModes())
 		return nil, fmt.Errorf("Invalid Access Modes: %v, Supported Access Modes: %v", options.PVC.Spec.AccessModes, p.GetAccessModes())
 	}
 
-	// The following will be used by the dashboard, to display links on PV page
-	userLinks := make([]string, 0)
-	localMonitoringURL := os.Getenv("OPENEBS_MONITOR_URL")
-	if localMonitoringURL != "" {
-		localMonitorLinkName := os.Getenv("OPENEBS_MONITOR_LINK_NAME")
-		if localMonitorLinkName == "" {
-			localMonitorLinkName = "monitor"
-		}
-		localMonitorVolKey := os.Getenv("OPENEBS_MONITOR_VOLKEY")
-		if localMonitorVolKey != "" {
-			localMonitoringURL += localMonitorVolKey + "=" + options.PVName
-		}
-		userLinks = append(userLinks, "\""+localMonitorLinkName+"\":\""+localMonitoringURL+"\"")
-	}
-	mayaPortalURL := os.Getenv("MAYA_PORTAL_URL")
-	if mayaPortalURL != "" {
-		mayaPortalLinkName := os.Getenv("MAYA_PORTAL_LINK_NAME")
-		if mayaPortalLinkName == "" {
-			mayaPortalLinkName = "maya"
-		}
-		userLinks = append(userLinks, "\""+mayaPortalLinkName+"\":\""+mayaPortalURL+"\"")
-	}
-	if len(userLinks) > 0 {
-		volAnnotations["alpha.dashboard.kubernetes.io/links"] = "{" + strings.Join(userLinks, ",") + "}"
-	}
+	// Use annotations to specify the context using which the PV was created.
+	volAnnotations := make(map[string]string)
+	volAnnotations = Setlink(volAnnotations, options.PVName)
+	volAnnotations["openEBSProvisionerIdentity"] = p.identity
 
-	fsType, err := parseClassParameters(options.Parameters)
+	fsType, err := mutil.ParseClassParameters(options.Parameters)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +163,6 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 			},
 		},
 	}
-
 	return pv, nil
 }
 
@@ -206,49 +172,32 @@ func (p *openEBSProvisioner) GetAccessModes() []v1.PersistentVolumeAccessMode {
 	}
 }
 
-// GetPersistentVolumeClass returns StorageClassName.
-func GetStorageClassName(options controller.VolumeOptions) *string {
-	// Use beta annotation first
-	if class, found := options.PVC.Annotations[BetaStorageClassAnnotation]; found {
-		return &class
-	}
-	return options.PVC.Spec.StorageClassName
-}
-
-// parseClassParameters extract the new fstype other then "ext4"(dafault) which
-// can be changed via "openebs.io/fstype" key and env OPENEBS_VALID_FSTYPE
-func parseClassParameters(params map[string]string) (string, error) {
-	var fsType string
-	for k, v := range params {
-		switch strings.ToLower(k) {
-		case "openebs.io/fstype":
-			fsType = v
+// The following will be used by the dashboard, to display links on PV page
+func Setlink(volAnnotations map[string]string, pvName string) map[string]string {
+	userLinks := make([]string, 0)
+	localMonitoringURL := os.Getenv("OPENEBS_MONITOR_URL")
+	if localMonitoringURL != "" {
+		localMonitorLinkName := os.Getenv("OPENEBS_MONITOR_LINK_NAME")
+		if localMonitorLinkName == "" {
+			localMonitorLinkName = "monitor"
 		}
+		localMonitorVolKey := os.Getenv("OPENEBS_MONITOR_VOLKEY")
+		if localMonitorVolKey != "" {
+			localMonitoringURL += localMonitorVolKey + "=" + pvName
+		}
+		userLinks = append(userLinks, "\""+localMonitorLinkName+"\":\""+localMonitoringURL+"\"")
 	}
-	if len(fsType) == 0 {
-		fsType = defaultFSType
+	mayaPortalURL := os.Getenv("MAYA_PORTAL_URL")
+	if mayaPortalURL != "" {
+		mayaPortalLinkName := os.Getenv("MAYA_PORTAL_LINK_NAME")
+		if mayaPortalLinkName == "" {
+			mayaPortalLinkName = "maya"
+		}
+		userLinks = append(userLinks, "\""+mayaPortalLinkName+"\":\""+mayaPortalURL+"\"")
+	}
+	if len(userLinks) > 0 {
+		volAnnotations["alpha.dashboard.kubernetes.io/links"] = "{" + strings.Join(userLinks, ",") + "}"
 	}
 
-	//Get openebs supported fstype from ENV variable
-	validENVFSType := os.Getenv("OPENEBS_VALID_FSTYPE")
-	if validENVFSType != "" {
-		slices := strings.Split(validENVFSType, ",")
-		for _, s := range slices {
-			validFSType = append(validFSType, s)
-		}
-	}
-	if !isValid(fsType, validFSType) {
-		return "", fmt.Errorf("Filesystem %s is not supported", fsType)
-	}
-	return fsType, nil
-}
-
-// isValid checks the validity of fstype returns true if supported
-func isValid(value string, list []string) bool {
-	for _, v := range list {
-		if v == value {
-			return true
-		}
-	}
-	return false
+	return volAnnotations
 }

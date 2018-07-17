@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2018 The OpenEBS Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1
+package v1alpha1
 
 import (
 	"bytes"
@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/kubernetes-incubator/external-storage/openebs/pkg/apis/v1alpha1"
@@ -30,18 +31,34 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-//OpenEBSVolumeV1Alpha1Interface Interface to bind methods
-type OpenEBSVolumeV1Alpha1Interface interface {
-	CreateVolume(v1alpha1.CASVolume) (string, error)
-	ReadVolume(string, interface{}) error
+const (
+	timeout = 60 * time.Second
+)
+
+// CASVolumeInterface Interface CAS volume operations
+type CASVolumeInterface interface {
+	//CreateVolume(v1alpha1.CASVolume) (string, error)
+	//ReadVolume(string, interface{}) error
+	Creater
+	Reader
 	DeleteVolume(string) error
 }
 
-//OpenEBSVolume struct
-type OpenEBSVolumeV1Alpha1 struct{}
+// Creater interface for volume create operations
+type Creater interface {
+	CreateVolume(v1alpha1.CASVolume) (string, error)
+}
+
+// Reader interface for volume read operations
+type Reader interface {
+	ReadVolume(string, interface{}) error
+}
+
+//CASVolume struct
+type CASVolume struct{}
 
 //GetMayaClusterIP returns maya-apiserver IP address
-func (v OpenEBSVolumeV1Alpha1) GetMayaClusterIP(client kubernetes.Interface) (string, error) {
+func (v CASVolume) GetMayaClusterIP(client kubernetes.Interface) (string, error) {
 	clusterIP := "127.0.0.1"
 
 	namespace := os.Getenv("OPENEBS_NAMESPACE")
@@ -69,12 +86,11 @@ func (v OpenEBSVolumeV1Alpha1) GetMayaClusterIP(client kubernetes.Interface) (st
 }
 
 // CreateVolume to create the CAS volume through a API call to m-apiserver
-func (v OpenEBSVolumeV1Alpha1) CreateVolume(vol v1alpha1.CASVolume) (string, error) {
+func (v CASVolume) CreateVolume(vol v1alpha1.CASVolume) (string, error) {
 
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
 		err := errors.New("MAPI_ADDR environment variable not set")
-		glog.Errorf("Error getting maya-apiserver IP Address: %v", err)
 		return "Error getting maya-apiserver IP Address", err
 	}
 	url := addr + "/latest/volumes/"
@@ -82,7 +98,7 @@ func (v OpenEBSVolumeV1Alpha1) CreateVolume(vol v1alpha1.CASVolume) (string, err
 	//Marshal serializes the value provided into a json document
 	jsonValue, _ := json.Marshal(vol)
 
-	glog.Infof("[DEBUG] volume Spec Created:\n%v\n", string(jsonValue))
+	glog.V(2).Infof("CAS Volume Spec Created:\n%v\n", string(jsonValue))
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonValue))
 
@@ -115,12 +131,11 @@ func (v OpenEBSVolumeV1Alpha1) CreateVolume(vol v1alpha1.CASVolume) (string, err
 }
 
 // ReadVolume to get the info of CAS volume through a API call to m-apiserver
-func (v OpenEBSVolumeV1Alpha1) ReadVolume(vname string, namespace string, obj interface{}) error {
+func (v CASVolume) ReadVolume(vname string, namespace string, obj interface{}) error {
 
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
 		err := errors.New("MAPI_ADDR environment variable not set")
-		glog.Errorf("Error getting mayaapi-server IP Address: %v", err)
 		return err
 	}
 	url := addr + "/latest/volumes/" + vname
@@ -154,18 +169,14 @@ func (v OpenEBSVolumeV1Alpha1) ReadVolume(vname string, namespace string, obj in
 }
 
 // DeleteVolume to get delete CAS volume through a API call to m-apiserver
-func (v OpenEBSVolumeV1Alpha1) DeleteVolume(vname string, namespace string) error {
+func (v CASVolume) DeleteVolume(vname string, namespace string) error {
 
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
 		err := errors.New("MAPI_ADDR environment variable not set")
-		glog.Errorf("Error getting maya-api-server IP Address: %v", err)
 		return err
 	}
 	url := addr + "/latest/volumes/" + vname
-
-	glog.V(2).Infof("[DEBUG] Delete Volume :%v", string(vname))
-
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err

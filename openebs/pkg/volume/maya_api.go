@@ -1,5 +1,5 @@
 /*
-Copyright 2017 The Kubernetes Authors.
+Copyright 2017 The OpenEBS Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1
+package volume
 
 import (
 	"bytes"
@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -56,7 +57,7 @@ func (v OpenEBSVolume) GetMayaClusterIP(client kubernetes.Interface) (string, er
 	clusterIP := "127.0.0.1"
 
 	namespace := os.Getenv("OPENEBS_NAMESPACE")
-	if namespace == "" {
+	if len(strings.TrimSpace(namespace)) == 0 {
 		namespace = "default"
 	}
 
@@ -64,13 +65,13 @@ func (v OpenEBSVolume) GetMayaClusterIP(client kubernetes.Interface) (string, er
 
 	//Fetch the Maya ClusterIP using the Maya API Server Service
 	mayaAPIServiceName := os.Getenv("OPENEBS_MAYA_SERVICE_NAME")
-	if mayaAPIServiceName == "" {
+	if len(strings.TrimSpace(mayaAPIServiceName)) == 0 {
 		mayaAPIServiceName = "maya-apiserver-service"
 	}
 
 	sc, err := client.CoreV1().Services(namespace).Get(mayaAPIServiceName, metav1.GetOptions{})
 	if err != nil {
-		glog.Errorf("Error getting IP Address for service - %s : %v", mayaAPIServiceName, err)
+		glog.Errorf("Failed to get maya api server's service: name '%s': err '%#v", mayaAPIServiceName, err)
 	}
 
 	clusterIP = sc.Spec.ClusterIP

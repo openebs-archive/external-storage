@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2018 The Kubernetes and OpenEBS Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,22 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package volume
+package provisioner
 
 import (
 	"errors"
 
 	"github.com/golang/glog"
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
-	mApiv1 "github.com/kubernetes-incubator/external-storage/openebs/pkg/v1"
+	mv1alpha1 "github.com/kubernetes-incubator/external-storage/openebs/pkg/volume/v1alpha1"
 	"k8s.io/api/core/v1"
 )
 
 // Delete removes the storage asset that was created by Provision represented
 // by the given PV.
-func (p *openEBSProvisionerV1alpha1) Delete(volume *v1.PersistentVolume) error {
+func (p *openEBSCASProvisioner) Delete(volume *v1.PersistentVolume) error {
 
-	var openebsCASVol mApiv1.OpenEBSVolumeV1Alpha1
+	var openebsCASVol mv1alpha1.CASVolume
 	ann, ok := volume.Annotations["openEBSProvisionerIdentity"]
 	if !ok {
 		return errors.New("identity annotation not found on PV")

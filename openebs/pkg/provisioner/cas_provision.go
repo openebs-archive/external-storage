@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Kubernetes Authors.
+Copyright 2018 The Kubernetes and OpenEBS Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,25 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package volume
+package provisioner
 
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/golang/glog"
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
 	"github.com/kubernetes-incubator/external-storage/lib/util"
 	"github.com/kubernetes-incubator/external-storage/openebs/pkg/apis/v1alpha1"
-	mApiv1 "github.com/kubernetes-incubator/external-storage/openebs/pkg/v1"
+	mutil "github.com/kubernetes-incubator/external-storage/openebs/pkg/util"
+	mvol "github.com/kubernetes-incubator/external-storage/openebs/pkg/volume"
+	mv1alpha1 "github.com/kubernetes-incubator/external-storage/openebs/pkg/volume/v1alpha1"
 	mayav1 "github.com/kubernetes-incubator/external-storage/openebs/types/v1"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
-type openEBSProvisionerV1alpha1 struct {
+type openEBSCASProvisioner struct {
 	// Maya-API Server URI running in the cluster
 	mapiURI string
 
@@ -42,14 +43,13 @@ type openEBSProvisionerV1alpha1 struct {
 }
 
 // NewOpenEBSProvisioner creates a new openebs provisioner
-func NewOpenEBSProvisionerV1alpha1(client kubernetes.Interface) controller.Provisioner {
+func NewOpenEBSCASProvisioner(client kubernetes.Interface) controller.Provisioner {
 
 	nodeName := os.Getenv("NODE_NAME")
 	if nodeName == "" {
 		glog.Errorf("ENV variable 'NODE_NAME' is not set")
 	}
-	var openebsObj mApiv1.OpenEBSVolume
-
+	var openebsObj mvol.OpenEBSVolume
 	//Get maya-apiserver IP address from cluster
 	addr, err := openebsObj.GetMayaClusterIP(client)
 
@@ -62,26 +62,26 @@ func NewOpenEBSProvisionerV1alpha1(client kubernetes.Interface) controller.Provi
 	//Set maya-apiserver IP address along with default port
 	os.Setenv("MAPI_ADDR", mayaServiceURI)
 
-	return &openEBSProvisionerV1alpha1{
+	return &openEBSCASProvisioner{
 		mapiURI:  mayaServiceURI,
 		identity: nodeName,
 	}
 }
 
-var _ controller.Provisioner = &openEBSProvisionerV1alpha1{}
+var _ controller.Provisioner = &openEBSCASProvisioner{}
 
 // Provision creates a storage asset and returns a PV object representing it.
-func (p *openEBSProvisionerV1alpha1) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
+func (p *openEBSCASProvisioner) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
 
 	//Issue a request to Maya API Server to create a volume
 	var volume mayav1.Volume
-	var openebsCASVol mApiv1.OpenEBSVolumeV1Alpha1
+	var openebsCASVol mv1alpha1.CASVolume
 	casVolume := v1alpha1.CASVolume{}
 
 	volSize := options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	casVolume.Spec.Capacity = volSize.String()
 
-	className := GetStorageClassName(options)
+	className := mutil.GetStorageClassName(options)
 
 	// creating a map b/c have to initialize the map using the make function before
 	// adding any elements to avoid nil map assignment error
@@ -91,18 +91,12 @@ func (p *openEBSProvisionerV1alpha1) Provision(options controller.VolumeOptions)
 		glog.Errorf("Volume has no storage class specified")
 	} else {
 		mapLabels[string(v1alpha1.StorageClassKey)] = *className
-		glog.Infof("Using Storageclass: %s", *className)
 		casVolume.Labels = mapLabels
 	}
 	casVolume.Labels[string(v1alpha1.NamespaceKey)] = options.PVC.Namespace
 	casVolume.Namespace = options.PVC.Namespace
 	casVolume.Labels[string(v1alpha1.PersistentVolumeClaimKey)] = options.PVC.ObjectMeta.Name
 	casVolume.Name = options.PVName
-
-	//Pass through labels from PVC to maya-apiserver
-	//volumeSpec.Metadata.Labels.Application = options.PVC.ObjectMeta.GetLabels()[mayav1.PVCLabelsApplication]
-	//volumeSpec.Metadata.Labels.ReplicaTopoKeyDomain = options.PVC.ObjectMeta.GetLabels()[mayav1.PVCLabelsReplicaTopKeyDomain]
-	//volumeSpec.Metadata.Labels.ReplicaTopoKeyType = options.PVC.ObjectMeta.GetLabels()[mayav1.PVCLabelsReplicaTopKeyType]
 
 	_, err := openebsCASVol.CreateVolume(casVolume)
 	if err != nil {
@@ -115,11 +109,6 @@ func (p *openEBSProvisionerV1alpha1) Provision(options controller.VolumeOptions)
 		glog.Errorf("Error getting volume details: %v", err)
 		return nil, err
 	}
-
-	// Use annotations to specify the context using which the PV was created.
-	volAnnotations := make(map[string]string)
-	volAnnotations["openEBSProvisionerIdentity"] = p.identity
-
 	var iqn, targetPortal string
 
 	for key, value := range volume.Metadata.Annotations.(map[string]interface{}) {
@@ -134,37 +123,16 @@ func (p *openEBSProvisionerV1alpha1) Provision(options controller.VolumeOptions)
 	glog.V(2).Infof("Volume IQN: %v , Volume Target: %v", iqn, targetPortal)
 
 	if !util.AccessModesContainedInAll(p.GetAccessModes(), options.PVC.Spec.AccessModes) {
-		glog.V(1).Info("Invalid Access Modes: %v, Supported Access Modes: %v", options.PVC.Spec.AccessModes, p.GetAccessModes())
+		glog.Errorf("Invalid Access Modes: %v, Supported Access Modes: %v", options.PVC.Spec.AccessModes, p.GetAccessModes())
 		return nil, fmt.Errorf("Invalid Access Modes: %v, Supported Access Modes: %v", options.PVC.Spec.AccessModes, p.GetAccessModes())
 	}
 
-	// The following will be used by the dashboard, to display links on PV page
-	userLinks := make([]string, 0)
-	localMonitoringURL := os.Getenv("OPENEBS_MONITOR_URL")
-	if localMonitoringURL != "" {
-		localMonitorLinkName := os.Getenv("OPENEBS_MONITOR_LINK_NAME")
-		if localMonitorLinkName == "" {
-			localMonitorLinkName = "monitor"
-		}
-		localMonitorVolKey := os.Getenv("OPENEBS_MONITOR_VOLKEY")
-		if localMonitorVolKey != "" {
-			localMonitoringURL += localMonitorVolKey + "=" + options.PVName
-		}
-		userLinks = append(userLinks, "\""+localMonitorLinkName+"\":\""+localMonitoringURL+"\"")
-	}
-	mayaPortalURL := os.Getenv("MAYA_PORTAL_URL")
-	if mayaPortalURL != "" {
-		mayaPortalLinkName := os.Getenv("MAYA_PORTAL_LINK_NAME")
-		if mayaPortalLinkName == "" {
-			mayaPortalLinkName = "maya"
-		}
-		userLinks = append(userLinks, "\""+mayaPortalLinkName+"\":\""+mayaPortalURL+"\"")
-	}
-	if len(userLinks) > 0 {
-		volAnnotations["alpha.dashboard.kubernetes.io/links"] = "{" + strings.Join(userLinks, ",") + "}"
-	}
+	// Use annotations to specify the context using which the PV was created.
+	volAnnotations := make(map[string]string)
+	volAnnotations = Setlink(volAnnotations, options.PVName)
+	volAnnotations["openEBSProvisionerIdentity"] = p.identity
 
-	fsType, err := parseClassParameters(options.Parameters)
+	fsType, err := mutil.ParseClassParameters(options.Parameters)
 	if err != nil {
 		return nil, err
 	}
@@ -190,11 +158,10 @@ func (p *openEBSProvisionerV1alpha1) Provision(options controller.VolumeOptions)
 			},
 		},
 	}
-
 	return pv, nil
 }
 
-func (p *openEBSProvisionerV1alpha1) GetAccessModes() []v1.PersistentVolumeAccessMode {
+func (p *openEBSCASProvisioner) GetAccessModes() []v1.PersistentVolumeAccessMode {
 	return []v1.PersistentVolumeAccessMode{
 		v1.ReadWriteOnce,
 	}

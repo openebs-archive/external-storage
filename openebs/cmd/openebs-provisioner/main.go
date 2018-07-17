@@ -1,5 +1,5 @@
 /*
-Copyright 2017 The Kubernetes Authors.
+Copyright 2018 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"strconv"
 
@@ -26,7 +25,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
-	vol "github.com/kubernetes-incubator/external-storage/openebs/pkg/volume"
+	"github.com/kubernetes-incubator/external-storage/openebs/pkg/provisioner"
 	mayav1 "github.com/kubernetes-incubator/external-storage/openebs/types/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -36,6 +35,9 @@ import (
 
 const (
 	provisionerName = "openebs.io/provisioner-iscsi"
+	// CASTemplateFeatureGateENVK is the ENV key to fetch cas template feature gate
+	// i.e. if cas template based provisioning is enabled or disabled
+	CASTemplateFeatureGateENVK = "OPENEBS_IO_CAS_TEMPLATE_FEATURE_GATE"
 )
 
 func main() {
@@ -50,7 +52,7 @@ func main() {
 		kubeConfig = mayav1.KubeConfigENV()
 	)
 	if len(k8sMaster) != 0 || len(kubeConfig) != 0 {
-		fmt.Printf("Build client config using k8s Master's Address: '%s' or Kubeconfig: '%s' \n", k8sMaster, kubeConfig)
+		glog.Infof("Build client config using k8s Master's Address: '%s' or Kubeconfig: '%s' \n", k8sMaster, kubeConfig)
 		config, err = clientcmd.BuildConfigFromFlags(k8sMaster, kubeConfig)
 	} else {
 		// Create an InClusterConfig and use it to create a client for the controller
@@ -77,19 +79,19 @@ func main() {
 	var openEBSProvisioner controller.Provisioner
 	if CASTemplateFeatureGate() {
 		glog.Infof("Using CAS template feature gate for volume provisioning")
-		openEBSProvisioner = vol.NewOpenEBSProvisionerV1alpha1(clientset)
+		openEBSProvisioner = provisioner.NewOpenEBSCASProvisioner(clientset)
 	} else {
-		openEBSProvisioner = vol.NewOpenEBSProvisioner(clientset)
+		openEBSProvisioner = provisioner.NewOpenEBSProvisioner(clientset)
 	}
 	if openEBSProvisioner != nil {
-		// Start the provision controller which will dynamically provision OpenEBS VSM
-		// PVs
+		// Start the provision controller which will dynamically provision OpenEBS PVs
 		pc := controller.NewProvisionController(
 			clientset,
 			provisionerName,
 			openEBSProvisioner,
 			serverVersion.GitVersion)
 
+		// Run starts all of controller's control loops
 		pc.Run(wait.NeverStop)
 	} else {
 		os.Exit(1) //Exit if provisioner not created.
@@ -97,17 +99,14 @@ func main() {
 
 }
 
-const (
-	// CASTemplateFeatureGateENVK is the ENV key to fetch cas template feature gate
-	// i.e. if cas template based provisioning is enabled or disabled
-	CASTemplateFeatureGateENVK = "OPENEBS_IO_CAS_TEMPLATE_FEATURE_GATE"
-)
-
 // CASTemplateFeatureGate returns true if cas template feature gate is
 // enabled
 func CASTemplateFeatureGate() bool {
 	// getEnv fetches the environment variable value from the runtime's environment
-	feature, _ := strconv.ParseBool(os.Getenv(string(CASTemplateFeatureGateENVK)))
+	feature, err := strconv.ParseBool(os.Getenv(string(CASTemplateFeatureGateENVK)))
+	if err != nil {
+		return false
+	}
 	return feature
 
 }

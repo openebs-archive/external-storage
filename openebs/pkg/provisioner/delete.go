@@ -1,5 +1,5 @@
 /*
-Copyright 2017 The Kubernetes Authors.
+Copyright 2017 The Kubernetes and OpenEBS Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package volume
+package provisioner
 
 import (
 	"errors"
 
 	"github.com/golang/glog"
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
-	mApiv1 "github.com/kubernetes-incubator/external-storage/openebs/pkg/v1"
+	mApiv1 "github.com/kubernetes-incubator/external-storage/openebs/pkg/volume"
 	"k8s.io/api/core/v1"
 )
 

@@ -64,36 +64,6 @@ const (
 	StorageClassKey CASKey = "openebs.io/storage-class"
 )
 
-// DeprecatedKey is a typed string to represent deprecated annotations' or
-// labels' key
-type DeprecatedKey string
-
-const (
-	// CapacityDeprecatedKey is a label key used to set volume capacity
-	//
-	// NOTE:
-	//  Deprecated in favour of CASVolume.Spec.Capacity
-	CapacityDeprecatedKey DeprecatedKey = "volumeprovisioner.mapi.openebs.io/storage-size"
-
-	// NamespaceDeprecatedKey is the key to fetch volume's namespace
-	//
-	// NOTE:
-	//  Deprecated in favour of NamespaceCK
-	NamespaceDeprecatedKey DeprecatedKey = "k8s.io/namespace"
-
-	// PersistentVolumeClaimDeprecatedKey is the key to fetch volume's PVC
-	//
-	// NOTE:
-	//  Deprecated in favour of PersistentVolumeClaimCK
-	PersistentVolumeClaimDeprecatedKey DeprecatedKey = "k8s.io/pvc"
-
-	// StorageClassDeprecatedKey is the key to fetch name of StorageClass
-	//
-	// NOTE:
-	//  Deprecated in favour of StorageClassCK
-	StorageClassDeprecatedKey DeprecatedKey = "k8s.io/storage-class"
-)
-
 // CASVolumeKey is a typed string to represent CAS Volume related annotations'
 // or labels' keys
 //

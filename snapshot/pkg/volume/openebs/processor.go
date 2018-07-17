@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	mApiv1 "github.com/kubernetes-incubator/external-storage/openebs/pkg/v1"
+	mvol "github.com/kubernetes-incubator/external-storage/openebs/pkg/volume"
 	mayav1 "github.com/kubernetes-incubator/external-storage/openebs/types/v1"
 
 	"github.com/golang/glog"
@@ -39,7 +39,7 @@ const (
 )
 
 type openEBSPlugin struct {
-	mApiv1.OpenEBSVolume
+	mvol.OpenEBSVolume
 }
 
 var _ volume.Plugin = &openEBSPlugin{}
@@ -209,7 +209,7 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 	snapshotID := snapshotData.Spec.OpenEBSSnapshot.SnapshotID
 	pvRefName := snapshotData.Spec.PersistentVolumeRef.Name
 	var oldvolume, newvolume mayav1.Volume
-	var openebsVol mApiv1.OpenEBSVolume
+	var openebsVol mvol.OpenEBSVolume
 	volumeSpec := mayav1.VolumeSpec{}
 
 	pvRefNamespace, _, err := GetNameAndNameSpaceFromSnapshotName(snapshotData.Spec.VolumeSnapshotRef.Name)
@@ -297,7 +297,7 @@ func (h *openEBSPlugin) VolumeDelete(pv *v1.PersistentVolume) error {
 	if pv == nil || pv.Spec.ISCSI == nil {
 		return fmt.Errorf("invalid VolumeSnapshotDataSource: %v", pv)
 	}
-	var openebsVol mApiv1.OpenEBSVolume
+	var openebsVol mvol.OpenEBSVolume
 
 	err := openebsVol.DeleteVolume(pv.Name, pv.Spec.ClaimRef.Namespace)
 	if err != nil {
@@ -312,7 +312,7 @@ func GetMayaService() error {
 	if err != nil {
 		return err
 	}
-	var openebsObj mApiv1.OpenEBSVolume
+	var openebsObj mvol.OpenEBSVolume
 	//Get maya-apiserver IP address from cluster
 	addr, err := openebsObj.GetMayaClusterIP(client)
 	if err != nil {
