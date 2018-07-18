@@ -60,53 +60,57 @@ func main() {
 		config, err = rest.InClusterConfig()
 	}
 	if err != nil {
-		glog.Errorf("Failed to create config: %v", err)
+		glog.Fatalf("Failed to create config: %v", err)
 	}
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		glog.Errorf("Failed to create client: %v", err)
+		glog.Fatalf("Failed to create client: %v", err)
 	}
 
 	// The controller needs to know what the server version is because out-of-tree
 	// provisioners aren't officially supported until 1.5
 	serverVersion, err := clientset.Discovery().ServerVersion()
 	if err != nil {
-		glog.Errorf("Error getting server version: %v", err)
+		glog.Fatalf("Error getting server version: %v", err)
 	}
 
 	// Create the provisioner: it implements the Provisioner interface expected by
 	// the controller
 	var openEBSProvisioner controller.Provisioner
-	if CASTemplateFeatureGate() {
+	feature, err := CASTemplateFeatureGate()
+	if err != nil {
+		glog.Fatalf("failed to fetch CAS template feature gate: %v", err)
+	}
+	if feature {
 		glog.Infof("Using CAS template feature gate for volume provisioning")
-		openEBSProvisioner = provisioner.NewOpenEBSCASProvisioner(clientset)
+
+		openEBSProvisioner, err = provisioner.NewOpenEBSCASProvisioner(clientset)
+		if err != nil {
+			glog.Fatalf("Error creating Openebs provisioner: %v", err)
+		}
 	} else {
 		openEBSProvisioner = provisioner.NewOpenEBSProvisioner(clientset)
 	}
-	if openEBSProvisioner != nil {
-		// Start the provision controller which will dynamically provision OpenEBS PVs
-		pc := controller.NewProvisionController(
-			clientset,
-			provisionerName,
-			openEBSProvisioner,
-			serverVersion.GitVersion)
 
-		// Run starts all of controller's control loops
-		pc.Run(wait.NeverStop)
-	} else {
-		os.Exit(1) //Exit if provisioner not created.
-	}
-
+	// Start the provision controller which will dynamically provision OpenEBS PVs
+	pc := controller.NewProvisionController(
+		clientset,
+		provisionerName,
+		openEBSProvisioner,
+		serverVersion.GitVersion,
+	)
+	// Run starts all of controller's control loops
+	pc.Run(wait.NeverStop)
 }
 
 // CASTemplateFeatureGate returns true if cas template feature gate is
 // enabled
-func CASTemplateFeatureGate() bool {
+func CASTemplateFeatureGate() (bool, error) {
 	// getEnv fetches the environment variable value from the runtime's environment
 	feature, err := strconv.ParseBool(os.Getenv(string(CASTemplateFeatureGateENVK)))
 	if err != nil {
-		return false
+		return false, err
 	}
-	return feature
+	return feature, nil
 
 }

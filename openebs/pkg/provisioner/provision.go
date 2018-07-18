@@ -17,6 +17,7 @@ limitations under the License.
 package provisioner
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -24,7 +25,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
 	"github.com/kubernetes-incubator/external-storage/lib/util"
-	mutil "github.com/kubernetes-incubator/external-storage/openebs/pkg/util"
 	mvol "github.com/kubernetes-incubator/external-storage/openebs/pkg/volume"
 	mayav1 "github.com/kubernetes-incubator/external-storage/openebs/types/v1"
 	"k8s.io/api/core/v1"
@@ -85,7 +85,7 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 	volSize := options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	volumeSpec.Metadata.Labels.Storage = volSize.String()
 
-	className := mutil.GetStorageClassName(options)
+	className := GetStorageClassName(options)
 
 	if className == nil {
 		glog.Errorf("Volume has no storage class specified")
@@ -136,7 +136,7 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 	volAnnotations = Setlink(volAnnotations, options.PVName)
 	volAnnotations["openEBSProvisionerIdentity"] = p.identity
 
-	fsType, err := mutil.ParseClassParameters(options.Parameters)
+	fsType, err := ParseClassParameters(options.Parameters)
 	if err != nil {
 		return nil, err
 	}
@@ -200,4 +200,28 @@ func Setlink(volAnnotations map[string]string, pvName string) map[string]string 
 	}
 
 	return volAnnotations
+}
+
+// Delete removes the storage asset that was created by Provision represented
+// by the given PV.
+func (p *openEBSProvisioner) Delete(volume *v1.PersistentVolume) error {
+
+	var openebsVol mvol.OpenEBSVolume
+
+	ann, ok := volume.Annotations["openEBSProvisionerIdentity"]
+	if !ok {
+		return errors.New("identity annotation not found on PV")
+	}
+	if ann != p.identity {
+		return &controller.IgnoredError{Reason: "identity annotation on PV does not match ours"}
+	}
+
+	// Issue a delete request to Maya API Server
+	err := openebsVol.DeleteVolume(volume.Name, volume.Spec.ClaimRef.Namespace)
+	if err != nil {
+		glog.Errorf("Failed to delete volume %s, error: %s", volume, err.Error())
+		return err
+	}
+
+	return nil
 }

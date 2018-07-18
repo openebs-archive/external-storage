@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/kubernetes-incubator/external-storage/openebs/pkg/apis/v1alpha1"
+	"github.com/kubernetes-incubator/external-storage/openebs/pkg/apis/openebs.io/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -37,11 +37,9 @@ const (
 
 // CASVolumeInterface Interface CAS volume operations
 type CASVolumeInterface interface {
-	//CreateVolume(v1alpha1.CASVolume) (string, error)
-	//ReadVolume(string, interface{}) error
 	Creater
 	Reader
-	DeleteVolume(string) error
+	Deleter
 }
 
 // Creater interface for volume create operations
@@ -51,7 +49,12 @@ type Creater interface {
 
 // Reader interface for volume read operations
 type Reader interface {
-	ReadVolume(string, interface{}) error
+	ReadVolume(vname string, namespace string, obj interface{}) error
+}
+
+// Deleter interface for volume delete operations
+type Deleter interface {
+	DeleteVolume(vname string) error
 }
 
 //CASVolume struct

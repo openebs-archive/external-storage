@@ -38,9 +38,6 @@ import (
 //   # this way of setting namespace gets the first priority
 //   namespace: default
 //   labels:
-//     # deprecated way to set capacity
-//     volumeprovisioner.mapi.openebs.io/storage-size: 2G
-//     openebs.io/storage-class: openebs-repaffinity-0.6.0
 //     # this manner of setting namespace gets the second priority
 //     openebs.io/namespace: default
 //     openebs.io/pvc: openebs-repaffinity-0.6.0
