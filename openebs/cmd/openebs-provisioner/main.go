@@ -18,8 +18,6 @@ package main
 
 import (
 	"flag"
-	"os"
-	"strconv"
 
 	"syscall"
 
@@ -101,16 +99,4 @@ func main() {
 	)
 	// Run starts all of controller's control loops
 	pc.Run(wait.NeverStop)
-}
-
-// CASTemplateFeatureGate returns true if cas template feature gate is
-// enabled
-func CASTemplateFeatureGate() (bool, error) {
-	// getEnv fetches the environment variable value from the runtime's environment
-	feature, err := strconv.ParseBool(os.Getenv(string(CASTemplateFeatureGateENVK)))
-	if err != nil {
-		return false, err
-	}
-	return feature, nil
-
 }
