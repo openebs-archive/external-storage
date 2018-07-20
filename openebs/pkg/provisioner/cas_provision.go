@@ -27,7 +27,6 @@ import (
 	"github.com/kubernetes-incubator/external-storage/openebs/pkg/apis/openebs.io/v1alpha1"
 	mvol "github.com/kubernetes-incubator/external-storage/openebs/pkg/volume"
 	mv1alpha1 "github.com/kubernetes-incubator/external-storage/openebs/pkg/volume/v1alpha1"
-	mayav1 "github.com/kubernetes-incubator/external-storage/openebs/types/v1"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -73,7 +72,6 @@ var _ controller.Provisioner = &openEBSCASProvisioner{}
 func (p *openEBSCASProvisioner) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
 
 	//Issue a request to Maya API Server to create a volume
-	var volume mayav1.Volume
 	var openebsCASVol mv1alpha1.CASVolume
 	casVolume := v1alpha1.CASVolume{}
 
@@ -103,23 +101,13 @@ func (p *openEBSCASProvisioner) Provision(options controller.VolumeOptions) (*v1
 		return nil, err
 	}
 
-	err = openebsCASVol.ReadVolume(options.PVName, options.PVC.Namespace, &volume)
+	err = openebsCASVol.ReadVolume(options.PVName, options.PVC.Namespace, &casVolume)
 	if err != nil {
 		glog.Errorf("Error getting volume details: %v", err)
 		return nil, err
 	}
-	var iqn, targetPortal string
 
-	for key, value := range volume.Metadata.Annotations.(map[string]interface{}) {
-		switch key {
-		case "vsm.openebs.io/iqn":
-			iqn = value.(string)
-		case "vsm.openebs.io/targetportals":
-			targetPortal = value.(string)
-		}
-	}
-
-	glog.V(2).Infof("Volume IQN: %v , Volume Target: %v", iqn, targetPortal)
+	glog.V(2).Infof("VolumeInfo: created volume metadata : %#v", casVolume)
 
 	if !util.AccessModesContainedInAll(p.GetAccessModes(), options.PVC.Spec.AccessModes) {
 		glog.Errorf("Invalid Access Modes: %v, Supported Access Modes: %v", options.PVC.Spec.AccessModes, p.GetAccessModes())
@@ -149,8 +137,8 @@ func (p *openEBSCASProvisioner) Provision(options controller.VolumeOptions) (*v1
 			},
 			PersistentVolumeSource: v1.PersistentVolumeSource{
 				ISCSI: &v1.ISCSIPersistentVolumeSource{
-					TargetPortal: targetPortal,
-					IQN:          iqn,
+					TargetPortal: casVolume.Spec.TargetPortal,
+					IQN:          casVolume.Spec.Iqn,
 					Lun:          0,
 					FSType:       fsType,
 					ReadOnly:     false,

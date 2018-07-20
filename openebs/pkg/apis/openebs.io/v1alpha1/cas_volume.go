@@ -96,30 +96,6 @@ const (
 	CASTemplateKeyForVolumeList CASVolumeKey = "cas.openebs.io/list-volume-template"
 )
 
-// CASJivaVolumeDefault is a typed string to represent defaults of Jiva based
-// CAS Volume properties or attributes or operations
-type CASJivaVolumeDefault string
-
-const (
-	// NOTE:
-	//  As per the current design there is no default CAS template to create a
-	// CAS Volume. It is expected that the StorageClass will explicitly set the
-	// cas template name required to create a CAS Volume. However reading,
-	// deleting & listing of cas volume(s) have corresponding cas templates that
-	// are used implicitly i.e. read, delete & list have their own default cas
-	// templates.
-
-	// DefaultCASTemplateForJivaVolumeRead is the default cas template to read
-	// a Jiva based CAS Volume
-	DefaultCASTemplateForJivaVolumeRead CASJivaVolumeDefault = "read-jiva-cas-volume-tpl"
-	// DefaultCASTemplateForJivaVolumeList is the default cas template to list
-	// Jiva based CAS Volumes
-	DefaultCASTemplateForJivaVolumeList CASJivaVolumeDefault = "list-jiva-cas-volume-tpl"
-	// DefaultCASTemplateForJivaVolumeDelete is the default cas template to
-	// delete a Jiva based CAS Volume
-	DefaultCASTemplateForJivaVolumeDelete CASJivaVolumeDefault = "delete-jiva-cas-volume-tpl"
-)
-
 // CASVolume represents a cas volume
 type CASVolume struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -133,7 +109,19 @@ type CASVolume struct {
 // CASVolumeSpec has the properties of a cas volume
 type CASVolumeSpec struct {
 	// Capacity will hold the capacity of this Volume
-	Capacity string `json:"capacity,omitempty" protobuf:"bytes,1,opt,name=capacity"`
+	Capacity string `json:"capacity"`
+	// Iqn will hold the iqn value of this Volume
+	Iqn string `json:"iqn"`
+	// TargetPortal will hold the target portal for this volume
+	TargetPortal string `json:"targetPortal"`
+	// TargetIP will hold the targetIP for this Volume
+	TargetIP string `json:"targetIP"`
+	// TargetPort will hold the targetIP for this Volume
+	TargetPort string `json:"targetPort"`
+	// Replicas will hold the replica count for this volume
+	Replicas string `json:"replicas"`
+	// TODO add controller and replica status
+
 }
 
 // CASVolumeStatus provides status of a cas volume
