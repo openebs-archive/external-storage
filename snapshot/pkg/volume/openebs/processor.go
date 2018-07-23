@@ -62,7 +62,7 @@ func GetPluginName() string {
 func (h *openEBSPlugin) Init(_ cloudprovider.Interface) {
 }
 
-func (h *openEBSPlugin) SnapshotCreate( snapshot *crdv1.VolumeSnapshot, pv *v1.PersistentVolume, tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, *[]crdv1.VolumeSnapshotCondition, error) {
+func (h *openEBSPlugin) SnapshotCreate(snapshot *crdv1.VolumeSnapshot, pv *v1.PersistentVolume, tags *map[string]string) (*crdv1.VolumeSnapshotDataSource, *[]crdv1.VolumeSnapshotCondition, error) {
 	spec := &pv.Spec
 	if spec == nil || spec.ISCSI == nil {
 		return nil, nil, fmt.Errorf("invalid PV spec %v", spec)
@@ -251,7 +251,7 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 	volumeSpec.CloneIP = cloneIP
 	volumeSpec.SnapshotName = snapshotID
 
-	_, err = openebsVol.CreateVolume(volumeSpec)
+	err = openebsVol.CreateVolume(volumeSpec)
 	if err != nil {
 		glog.Errorf("Error creating volume: %v", err)
 		return nil, nil, err

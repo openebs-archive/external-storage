@@ -89,12 +89,12 @@ func (v CASVolume) GetMayaClusterIP(client kubernetes.Interface) (string, error)
 }
 
 // CreateVolume to create the CAS volume through a API call to m-apiserver
-func (v CASVolume) CreateVolume(vol v1alpha1.CASVolume) (string, error) {
+func (v CASVolume) CreateVolume(vol v1alpha1.CASVolume) error {
 
 	addr := os.Getenv("MAPI_ADDR")
 	if addr == "" {
 		err := errors.New("MAPI_ADDR environment variable not set")
-		return "Error getting maya-apiserver IP Address", err
+		return err
 	}
 	url := addr + "/latest/volumes/"
 
@@ -113,24 +113,23 @@ func (v CASVolume) CreateVolume(vol v1alpha1.CASVolume) (string, error) {
 	resp, err := c.Do(req)
 	if err != nil {
 		glog.Errorf("Error when connecting maya-apiserver %v", err)
-		return "Could not connect to maya-apiserver", err
+		return err
 	}
 	defer resp.Body.Close()
+
+	code := resp.StatusCode
+	if code != http.StatusOK {
+		return errors.New(http.StatusText(code))
+	}
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		glog.Errorf("Unable to read response from maya-apiserver %v", err)
-		return "Unable to read response from maya-apiserver", err
+		return err
 	}
 
-	code := resp.StatusCode
-	if code != http.StatusOK {
-		glog.Errorf("Status error: %v\n", http.StatusText(code))
-		return "HTTP Status error from maya-apiserver", err
-	}
-
-	glog.Infof("volume Successfully Created:\n%v\n", string(data))
-	return "volume Successfully Created", nil
+	glog.Infof("volume Successfully Created:\n%#v", string(data))
+	return nil
 }
 
 // ReadVolume to get the info of CAS volume through a API call to m-apiserver
@@ -165,7 +164,7 @@ func (v CASVolume) ReadVolume(vname string, namespace string, obj interface{}) e
 	code := resp.StatusCode
 	if code != http.StatusOK {
 		glog.Errorf("HTTP Status error from maya-apiserver: %v\n", http.StatusText(code))
-		return err
+		return errors.New(http.StatusText(code))
 	}
 	glog.V(2).Info("volume Details Successfully Retrieved")
 	return json.NewDecoder(resp.Body).Decode(obj)
@@ -199,8 +198,7 @@ func (v CASVolume) DeleteVolume(vname string, namespace string) error {
 
 	code := resp.StatusCode
 	if code != http.StatusOK {
-		glog.Errorf("HTTP Status error from maya-apiserver: %v\n", http.StatusText(code))
-		return err
+		return errors.New(http.StatusText(code))
 	}
 	glog.Info("volume Deleted Successfully initiated")
 	return nil

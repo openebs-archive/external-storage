@@ -95,18 +95,17 @@ func (p *openEBSCASProvisioner) Provision(options controller.VolumeOptions) (*v1
 	casVolume.Labels[string(v1alpha1.PersistentVolumeClaimKey)] = options.PVC.ObjectMeta.Name
 	casVolume.Name = options.PVName
 
-	_, err := openebsCASVol.CreateVolume(casVolume)
+	err := openebsCASVol.CreateVolume(casVolume)
 	if err != nil {
-		glog.Errorf("Error creating volume: %v", err)
+		glog.Errorf("Failed to create volume:  %s, error: %s", options, err.Error())
 		return nil, err
 	}
 
 	err = openebsCASVol.ReadVolume(options.PVName, options.PVC.Namespace, &casVolume)
 	if err != nil {
-		glog.Errorf("Error getting volume details: %v", err)
+		glog.Errorf("Failed to read volume: %v", err)
 		return nil, err
 	}
-
 	glog.V(2).Infof("VolumeInfo: created volume metadata : %#v", casVolume)
 
 	if !util.AccessModesContainedInAll(p.GetAccessModes(), options.PVC.Spec.AccessModes) {

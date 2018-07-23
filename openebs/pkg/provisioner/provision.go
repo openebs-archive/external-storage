@@ -101,7 +101,7 @@ func (p *openEBSProvisioner) Provision(options controller.VolumeOptions) (*v1.Pe
 	volumeSpec.Metadata.Labels.ReplicaTopoKeyDomain = options.PVC.ObjectMeta.GetLabels()[mayav1.PVCLabelsReplicaTopKeyDomain]
 	volumeSpec.Metadata.Labels.ReplicaTopoKeyType = options.PVC.ObjectMeta.GetLabels()[mayav1.PVCLabelsReplicaTopKeyType]
 
-	_, err := openebsVol.CreateVolume(volumeSpec)
+	err := openebsVol.CreateVolume(volumeSpec)
 	if err != nil {
 		glog.Errorf("Error creating volume: %v", err)
 		return nil, err
