@@ -22,7 +22,7 @@ build:
 
 push:
 	@cp openebs-provisioner buildscripts/docker/
-	@cd buildscripts/docker && sudo docker build -t openebs/openebs-k8s-provisioner:cas .
+	@cd buildscripts/docker && sudo docker build -t openebs/openebs-k8s-provisioner:ci .
 
 image: build push
 
