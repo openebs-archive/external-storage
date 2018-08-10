@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -117,15 +118,15 @@ func (v CASVolume) CreateVolume(vol v1alpha1.CASVolume) error {
 	}
 	defer resp.Body.Close()
 
-	code := resp.StatusCode
-	if code != http.StatusOK {
-		return errors.New(http.StatusText(code))
-	}
-
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		glog.Errorf("Unable to read response from maya-apiserver %v", err)
 		return err
+	}
+	code := resp.StatusCode
+	if code != http.StatusOK {
+		glog.Errorf("%s: failed to create volume '%s': response: %+v", http.StatusText(code), vol.Name, data)
+		return fmt.Errorf("%s: failed to create volume '%s': response: %+v", http.StatusText(code), vol.Name, data)
 	}
 
 	glog.Infof("volume Successfully Created:\n%#v", string(data))
@@ -201,7 +202,7 @@ func (v CASVolume) DeleteVolume(vname string, namespace string) error {
 
 	code := resp.StatusCode
 	if code != http.StatusOK {
-		return errors.New(http.StatusText(code))
+		return fmt.Errorf("failed to delete volume %s:%s", vname, http.StatusText(code))
 	}
 	glog.Info("volume Deleted Successfully initiated")
 	return nil
