@@ -224,7 +224,7 @@ type CinderVolumeSnapshotSource struct {
 
 // OpenEBSVolumeSnapshotSource is OpenEBS volume snapshot source
 type OpenEBSVolumeSnapshotSource struct {
-	// Unique id of the cinder volume snapshot resource. Used to identify the snapshot in OpenStack
+	// Unique id of the openebs volume snapshot resource. Used to identify the snapshot in Openebs
 	SnapshotID string `json:"snapshotId"`
 }
 

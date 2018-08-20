@@ -29,6 +29,7 @@ import (
 	crdv1 "github.com/kubernetes-incubator/external-storage/snapshot/pkg/apis/crd/v1"
 	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/cloudprovider"
 	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/volume"
+	util "github.com/openebs/maya/pkg/util"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/apis/core"
@@ -38,7 +39,10 @@ const (
 	openEBSPersistentDiskPluginName = "openebs"
 )
 
+type openEBSPluginInterface interface{}
+
 type openEBSPlugin struct {
+	openEBSPluginInterface
 	mvol.OpenEBSVolume
 }
 
@@ -46,12 +50,22 @@ var _ volume.Plugin = &openEBSPlugin{}
 
 // RegisterPlugin registers the volume plugin
 func RegisterPlugin() volume.Plugin {
+	feature, err := util.CASTemplateFeatureGate()
+	// if feature is set then return openEBSv1alpha1Plugin
+	if err == nil && feature {
+		return &openEBSv1alpha1Plugin{}
+	}
 	return &openEBSPlugin{}
 }
 
 func init() {
-	// GetMayaService get the maya-service endpoint
-	_ = GetMayaService()
+	feature, err := util.CASTemplateFeatureGate()
+	// if feature is set then use openEBSv1alpha1Plugin
+	if err == nil && feature {
+		(&openEBSv1alpha1Plugin{}).GetMayaService()
+	} else {
+		_ = (&openEBSPlugin{}).GetMayaService()
+	}
 }
 
 // GetPluginName gets the name of the volume plugin
@@ -261,14 +275,14 @@ func (h *openEBSPlugin) VolumeDelete(pv *v1.PersistentVolume) error {
 	return nil
 }
 
-func GetMayaService() error {
+func (h *openEBSPlugin) GetMayaService() error {
 	client, err := GetK8sClient()
 	if err != nil {
 		return err
 	}
-	var openebsObj mvol.OpenEBSVolume
+
 	//Get maya-apiserver IP address from cluster
-	addr, err := openebsObj.GetMayaClusterIP(client)
+	addr, err := h.GetMayaClusterIP(client)
 	if err != nil {
 		glog.Errorf("Error getting maya-apiserver IP Address: %v", err)
 		return err
@@ -290,7 +304,7 @@ func GetPersistentVolumeClass(volume *v1.PersistentVolume) string {
 	return volume.Spec.StorageClassName
 }
 
-// GetPersistentClass returns StoragClassName
+// GetStorageClass returns StoragClassName
 func GetStorageClass(pvName string) (string, error) {
 	client, err := GetK8sClient()
 	if err != nil {
