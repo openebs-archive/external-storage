@@ -164,13 +164,20 @@ func (p *openEBSCASProvisioner) GetAccessModes() []v1.PersistentVolumeAccessMode
 func (p *openEBSCASProvisioner) Delete(volume *v1.PersistentVolume) error {
 
 	var openebsCASVol mv1alpha1.CASVolume
-	ann, ok := volume.Annotations["openEBSProvisionerIdentity"]
+	_, ok := volume.Annotations["openEBSProvisionerIdentity"]
 	if !ok {
 		return errors.New("identity annotation not found on PV")
 	}
-	if ann != p.identity {
-		return &controller.IgnoredError{Reason: "identity annotation on PV does not match ours"}
-	}
+
+	// openebs provisioner is stateless container, can be reschuduled in any
+	// other node,so having identity check is not relvent here unless we use
+	// some other identity check.
+	// TODO use provisionerName instead of Node name
+	/*
+		if ann != p.identity {
+			return &controller.IgnoredError{Reason: "identity annotation on PV does not match ours"}
+		}
+	*/
 
 	// Issue a delete request to Maya API Server
 	err := openebsCASVol.DeleteVolume(volume.Name, volume.Spec.ClaimRef.Namespace)

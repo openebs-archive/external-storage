@@ -66,10 +66,24 @@ kubectl create -f  $DST_REPO/external-storage/openebs/ci/snapshot/snapshot.yaml
 kubectl logs --tail=20 -n openebs deployment/openebs-snapshot-operator -c snapshot-controller
 
 # Promote/restore snapshot as persistent volume
-sleep 60
+sleep 30
 echo "*****************Promoting snapshot as new PVC***************************"
 kubectl create -f  $DST_REPO/external-storage/openebs/ci/snapshot/snapshot_claim.yaml
 kubectl logs --tail=20 -n openebs deployment/openebs-snapshot-operator -c snapshot-provisioner
+
+sleep 30
+# get clone replica pod IP to make a curl request to get hte clone status
+cloned_replica_ip=$(kubectl get pods -owide -l pvc=demo-snap-vol-claim --no-headers | grep -v ctrl | awk {'print $6'})
+echo "***************** checking clone status *********************************"
+for i in $(seq 1 100) ; do
+		clonestatus=`curl http://$cloned_replica_ip:9502/v1/replicas/1 | jq '.clonestatus' | tr -d '"'`
+		if [ "$clonestatus" == "completed" ]; then
+        break
+			else
+        echo "Clone process in not completed"
+        sleep 10
+    fi
+done
 
 sleep 30
 echo "***************Creating busybox-clone application pod********************"
