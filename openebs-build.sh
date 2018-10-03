@@ -22,6 +22,3 @@ cp -R $SRC_REPO/../external-storage $DST_REPO
 cd $DST_REPO/external-storage
 make openebs
 
-
-
-

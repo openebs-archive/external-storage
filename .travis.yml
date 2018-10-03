@@ -1,6 +1,8 @@
 language: go
 env:
 - CHANGE_MINIKUBE_NONE_USER=true
+git:
+  depth: false
 go:
   - 1.10.3
 services: docker
@@ -32,6 +34,7 @@ script:
   - ./openebs-ci.sh
 
 after_success:
+  - git describe --tags --always
   - ./openebs-deploy.sh
 
 branches:

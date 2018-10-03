@@ -14,22 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-SRC_REPO="$GOPATH/src/github.com/openebs"
-DST_REPO="$GOPATH/src/github.com/kubernetes-incubator"
-
 export DIMAGE="openebs/openebs-k8s-provisioner"
-cd $DST_REPO/external-storage/
-make deploy-openebs-provisioner
+./openebs/buildscripts/push
 
-echo "Pushing images to docker hub"
 export DIMAGE="openebs/snapshot-controller"
 ./openebs/buildscripts/push
+
 export DIMAGE="openebs/snapshot-provisioner"
 ./openebs/buildscripts/push
-
-
-
-
-
-
 
