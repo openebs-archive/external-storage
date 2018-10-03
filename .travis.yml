@@ -38,3 +38,4 @@ branches:
   only:
   - release
   - /^\d+\.\d+(\.\d+)?(-\S*)?$/
+  - /^v\d+\.\d+(\.\S*)?$/
