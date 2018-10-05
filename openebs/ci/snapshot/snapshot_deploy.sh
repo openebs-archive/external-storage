@@ -87,8 +87,9 @@ kubectl create -f  $DST_REPO/external-storage/openebs/ci/snapshot/snapshot_claim
 kubectl logs --tail=20 -n openebs deployment/openebs-snapshot-operator -c snapshot-provisioner
 
 sleep 30
+kubectl get pods
 # get clone replica pod IP to make a curl request to get hte clone status
-cloned_replica_ip=$(kubectl get pods -owide -l pvc=demo-snap-vol-claim --no-headers | grep -v ctrl | awk {'print $6'})
+cloned_replica_ip=$(kubectl get pods -owide -l openebs.io/persistent-volume-claim=demo-snap-vol-claim --no-headers | grep -v ctrl | awk {'print $6'})
 echo "***************** checking clone status *********************************"
 for i in $(seq 1 100) ; do
 		clonestatus=`curl http://$cloned_replica_ip:9502/v1/replicas/1 | jq '.clonestatus' | tr -d '"'`
