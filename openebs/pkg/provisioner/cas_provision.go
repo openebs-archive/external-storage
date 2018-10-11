@@ -91,36 +91,33 @@ func (p *openEBSCASProvisioner) Provision(options controller.VolumeOptions) (*v1
 		mapLabels[string(v1alpha1.StorageClassKey)] = *className
 		casVolume.Labels = mapLabels
 	}
-	// Generate the hash string from pvc UUID and append to make unique PV name
-	pvchash := fmt.Sprint(pvcHash(string(options.PVC.UID)))
-	PVName := options.PVC.Namespace + "-" + options.PVC.Name + "-" + pvchash
 
 	casVolume.Labels[string(v1alpha1.NamespaceKey)] = options.PVC.Namespace
 	casVolume.Namespace = options.PVC.Namespace
 	casVolume.Labels[string(v1alpha1.PersistentVolumeClaimKey)] = options.PVC.ObjectMeta.Name
-	casVolume.Name = PVName
+	casVolume.Name = options.PVName
 
 	// Check if volume already exists
 	// if present then return the read values
 	// if unexpected error then return the error
 	// if absent then create volume
-	glog.V(2).Infof("Checking if volume %q already exists", PVName)
-	err := openebsCASVol.ReadVolume(PVName, options.PVC.Namespace, *className, &casVolume)
+	glog.V(2).Infof("Checking if volume %q already exists", options.PVName)
+	err := openebsCASVol.ReadVolume(options.PVName, options.PVC.Namespace, *className, &casVolume)
 	if err == nil {
-		glog.V(2).Infof("Volume %q already present", PVName)
+		glog.V(2).Infof("Volume %q already present", options.PVName)
 	} else if err.Error() != http.StatusText(404) {
 		// any error other than 404 is unexpected error
 		glog.Errorf("Unexpected error occurred while trying to read the volume: %s", err)
 		return nil, err
 	} else if err.Error() == http.StatusText(404) {
 		// Create the volume and read it
-		glog.V(2).Infof("Volume %q does not exist,attempting to create volume", PVName)
+		glog.V(2).Infof("Volume %q does not exist,attempting to create volume", options.PVName)
 		err = openebsCASVol.CreateVolume(casVolume)
 		if err != nil {
 			glog.Errorf("Failed to create volume:  %+v, error: %s", options, err.Error())
 			return nil, err
 		}
-		err = openebsCASVol.ReadVolume(PVName, options.PVC.Namespace, *className, &casVolume)
+		err = openebsCASVol.ReadVolume(options.PVName, options.PVC.Namespace, *className, &casVolume)
 		if err != nil {
 			glog.Errorf("Failed to read volume: %v", err)
 			return nil, err
@@ -135,13 +132,13 @@ func (p *openEBSCASProvisioner) Provision(options controller.VolumeOptions) (*v1
 
 	// Use annotations to specify the context using which the PV was created.
 	volAnnotations := make(map[string]string)
-	volAnnotations = Setlink(volAnnotations, PVName)
+	volAnnotations = Setlink(volAnnotations, options.PVName)
 	volAnnotations["openEBSProvisionerIdentity"] = p.identity
 	volAnnotations["openebs.io/cas-type"] = casVolume.Spec.CasType
 
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        PVName,
+			Name:        options.PVName,
 			Annotations: volAnnotations,
 		},
 		Spec: v1.PersistentVolumeSpec{
