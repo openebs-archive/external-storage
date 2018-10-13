@@ -20,10 +20,3 @@ func GetStorageClassName(options controller.VolumeOptions) *string {
 	}
 	return options.PVC.Spec.StorageClassName
 }
-
-// pvcHash generates a hash intenger from a string
-func pvcHash(s string) uint32 {
-	h := fnv.New32a()
-	h.Write([]byte(s))
-	return h.Sum32()
-}
