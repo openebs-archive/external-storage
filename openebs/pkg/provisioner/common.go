@@ -1,8 +1,6 @@
 package provisioner
 
 import (
-	"hash/fnv"
-
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
 )
 
