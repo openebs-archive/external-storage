@@ -131,10 +131,9 @@ func (p *openEBSCASProvisioner) Provision(options controller.VolumeOptions) (*v1
 	}
 
 	// Use annotations to specify the context using which the PV was created.
-	volAnnotations := make(map[string]string)
+	volAnnotations := GetVolAnnotations(casVolume)
 	volAnnotations = Setlink(volAnnotations, options.PVName)
 	volAnnotations["openEBSProvisionerIdentity"] = p.identity
-	volAnnotations["openebs.io/cas-type"] = casVolume.Spec.CasType
 
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
@@ -226,4 +225,22 @@ func Setlink(volAnnotations map[string]string, pvName string) map[string]string 
 	}
 
 	return volAnnotations
+}
+
+func GetVolAnnotations(casVolume v1alpha1.CASVolume) (volAnnotations map[string]string) {
+	volAnnotations = make(map[string]string)
+	volAnnotations[string(v1alpha1.CASTypeKey)] = casVolume.Spec.CasType
+	if casVolume.Annotations == nil {
+		return
+	}
+
+	volAnnotations[string(v1alpha1.CASTemplateKeyForVolumeCreate)] = casVolume.Annotations[string(v1alpha1.CASTemplateKeyForVolumeCreate)]
+	volAnnotations[string(v1alpha1.CASTemplateKeyForVolumeDelete)] = casVolume.Annotations[string(v1alpha1.CASTemplateKeyForVolumeDelete)]
+	volAnnotations[string(v1alpha1.CASTemplateKeyForVolumeRead)] = casVolume.Annotations[string(v1alpha1.CASTemplateKeyForVolumeRead)]
+	volAnnotations[string(v1alpha1.CASTemplateKeyForSnapshotCreate)] = casVolume.Annotations[string(v1alpha1.CASTemplateKeyForSnapshotCreate)]
+	volAnnotations[string(v1alpha1.CASTemplateKeyForSnapshotDelete)] = casVolume.Annotations[string(v1alpha1.CASTemplateKeyForSnapshotDelete)]
+	volAnnotations[string(v1alpha1.CASTemplateKeyForSnapshotRead)] = casVolume.Annotations[string(v1alpha1.CASTemplateKeyForSnapshotRead)]
+	volAnnotations[string(v1alpha1.CASTemplateKeyForSnapshotList)] = casVolume.Annotations[string(v1alpha1.CASTemplateKeyForSnapshotList)]
+
+	return
 }

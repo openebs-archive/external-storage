@@ -225,9 +225,8 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 
 	glog.V(1).Infof("snapshot restored successfully to: %v", snapshotData.Spec.OpenEBSSnapshot.SnapshotID)
 
-	vollabels := make(map[string]string)
+	vollabels := provisioner.GetVolAnnotations(newVolume)
 	vollabels = provisioner.Setlink(vollabels, pvName)
-	vollabels["openebs.io/cas-type"] = newVolume.Spec.CasType
 
 	pv := &v1.PersistentVolumeSource{
 		ISCSI: &v1.ISCSIPersistentVolumeSource{
@@ -357,4 +356,22 @@ func CreateCloneVolumeSpec(snapshotData *crdv1.VolumeSnapshotData,
 	casVolume.CloneSpec.SourceVolume = pvRefName
 
 	return casVolume, pvRefStorageClass
+}
+
+func getVolAnnotations(casVolume v1alpha1.CASVolume) (volAnnotations map[string]string) {
+	volAnnotations = make(map[string]string)
+	volAnnotations[string(v1alpha1.CASTypeKey)] = casVolume.Spec.CasType
+	if casVolume.Annotations == nil {
+		return
+	}
+
+	volAnnotations[string(v1alpha1.CASTemplateKeyForVolumeCreate)] = casVolume.Annotations[string(v1alpha1.CASTemplateKeyForVolumeCreate)]
+	volAnnotations[string(v1alpha1.CASTemplateKeyForVolumeDelete)] = casVolume.Annotations[string(v1alpha1.CASTemplateKeyForVolumeDelete)]
+	volAnnotations[string(v1alpha1.CASTemplateKeyForVolumeRead)] = casVolume.Annotations[string(v1alpha1.CASTemplateKeyForVolumeRead)]
+	volAnnotations[string(v1alpha1.CASTemplateKeyForSnapshotCreate)] = casVolume.Annotations[string(v1alpha1.CASTemplateKeyForSnapshotCreate)]
+	volAnnotations[string(v1alpha1.CASTemplateKeyForSnapshotDelete)] = casVolume.Annotations[string(v1alpha1.CASTemplateKeyForSnapshotDelete)]
+	volAnnotations[string(v1alpha1.CASTemplateKeyForSnapshotRead)] = casVolume.Annotations[string(v1alpha1.CASTemplateKeyForSnapshotRead)]
+	volAnnotations[string(v1alpha1.CASTemplateKeyForSnapshotList)] = casVolume.Annotations[string(v1alpha1.CASTemplateKeyForSnapshotList)]
+
+	return
 }

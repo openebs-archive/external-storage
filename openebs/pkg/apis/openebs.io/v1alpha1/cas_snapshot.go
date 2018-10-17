@@ -20,6 +20,41 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// CASSnapshotKey is a typed string to represent CAS Snapshot related annotations'
+// or labels' keys
+//
+// Example 1 - Below is a sample StorageClass that makes use of a CASSnapshotKey
+// constant i.e. the cas template used to create a cas snapshot
+//
+// ```yaml
+// apiVersion: storage.k8s.io/v1
+// kind: StorageClass
+// metadata:
+//  name: openebs-standard
+//  annotations:
+//    cas.openebs.io/create-snapshot-template: cast-standard-0.8.0
+// provisioner: openebs.io/provisioner-iscsi
+// ```
+type CASSnapshotKey string
+
+const (
+	// CASTemplateKeyForSnapshotCreate is the key to fetch name of CASTemplate
+	// to create a CAS Snapshot
+	CASTemplateKeyForSnapshotCreate CASSnapshotKey = "cas.openebs.io/create-snapshot-template"
+
+	// CASTemplateKeyForSnapshotRead is the key to fetch name of CASTemplate
+	// to read a CAS Snapshot
+	CASTemplateKeyForSnapshotRead CASSnapshotKey = "cas.openebs.io/read-snapshot-template"
+
+	// CASTemplateKeyForSnapshotDelete is the key to fetch name of CASTemplate
+	// to delete a CAS Snapshot
+	CASTemplateKeyForSnapshotDelete CASSnapshotKey = "cas.openebs.io/delete-snapshot-template"
+
+	// CASTemplateKeyForSnapshotList is the key to fetch name of CASTemplate
+	// to list CAS Snapshots
+	CASTemplateKeyForSnapshotList CASSnapshotKey = "cas.openebs.io/list-snapshot-template"
+)
+
 // CASSnapshot represents a cas snapshot
 type CASSnapshot struct {
 	metav1.TypeMeta   `json:",inline"`
