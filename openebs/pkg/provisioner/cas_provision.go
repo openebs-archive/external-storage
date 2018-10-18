@@ -68,6 +68,7 @@ func NewOpenEBSCASProvisioner(client kubernetes.Interface) (controller.Provision
 }
 
 var _ controller.Provisioner = &openEBSCASProvisioner{}
+var _ controller.BlockProvisioner = &openEBSCASProvisioner{}
 
 // Provision creates a storage asset and returns a PV object representing it.
 func (p *openEBSCASProvisioner) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
@@ -136,6 +137,14 @@ func (p *openEBSCASProvisioner) Provision(options controller.VolumeOptions) (*v1
 	volAnnotations["openEBSProvisionerIdentity"] = p.identity
 	volAnnotations["openebs.io/cas-type"] = casVolume.Spec.CasType
 
+	fstype := casVolume.Spec.FSType
+	var volumeMode *v1.PersistentVolumeMode
+	volumeMode = options.PVC.Spec.VolumeMode
+	if volumeMode != nil && *volumeMode == v1.PersistentVolumeBlock {
+		// Block volumes should not have any FSType
+		glog.Infof("block volume provisioning for volume %s", options.PVC.ObjectMeta.Name)
+		fstype = ""
+	}
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        options.PVName,
@@ -148,12 +157,13 @@ func (p *openEBSCASProvisioner) Provision(options controller.VolumeOptions) (*v1
 			Capacity: v1.ResourceList{
 				v1.ResourceName(v1.ResourceStorage): options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)],
 			},
+			VolumeMode: volumeMode,
 			PersistentVolumeSource: v1.PersistentVolumeSource{
 				ISCSI: &v1.ISCSIPersistentVolumeSource{
 					TargetPortal: casVolume.Spec.TargetPortal,
 					IQN:          casVolume.Spec.Iqn,
 					Lun:          casVolume.Spec.Lun,
-					FSType:       casVolume.Spec.FSType,
+					FSType:       fstype,
 					ReadOnly:     false,
 				},
 			},
@@ -166,6 +176,10 @@ func (p *openEBSCASProvisioner) GetAccessModes() []v1.PersistentVolumeAccessMode
 	return []v1.PersistentVolumeAccessMode{
 		v1.ReadWriteOnce,
 	}
+}
+
+func (p *openEBSCASProvisioner) SupportsBlock() bool {
+	return true
 }
 
 // Delete removes the storage asset that was created by Provision represented
