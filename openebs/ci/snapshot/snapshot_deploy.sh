@@ -4,8 +4,8 @@ echo "*****************************Deploying Openebs***************************"
 CI_BRANCH="master"
 CI_TAG="ci"
 
-#Images from this repo are always tagged as ci 
-#The downloaded operator file will may contain a non-ci tag name 
+#Images from this repo are always tagged as ci
+#The downloaded operator file will may contain a non-ci tag name
 # depending on when and from where it is being downloaded. For ex:
 # - during the release time, the image tags can be versioned like 0.7.0-RC..
 # - from a branch, the image tags can be the branch names like v0.7.x-ci
@@ -42,7 +42,7 @@ done
 
 # Install iscsi pkg
 echo "Installing iscsi packages"
-sudo apt-get install open-iscsi
+sudo apt-get update && sudo apt-get install open-iscsi
 sudo service iscsid start
 sudo service iscsid status
 
