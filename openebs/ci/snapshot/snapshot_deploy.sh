@@ -15,6 +15,11 @@ if [ ${CI_TAG} != "ci" ]; then
   sudo docker tag openebs/snapshot-provisioner:ci openebs/snapshot-provisioner:${CI_TAG}
 fi
 
+#Tag the images with quay.io, since the operator can either have quay or docker images
+sudo docker tag openebs/openebs-k8s-provisioner:ci quay.io/openebs/openebs-k8s-provisioner:${CI_TAG}
+sudo docker tag openebs/snapshot-controller:ci quay.io/openebs/snapshot-controller:${CI_TAG}
+sudo docker tag openebs/snapshot-provisioner:ci quay.io/openebs/snapshot-provisioner:${CI_TAG}
+
 kubectl apply -f https://raw.githubusercontent.com/openebs/openebs/${CI_BRANCH}/k8s/openebs-operator.yaml
 
 for i in $(seq 1 50) ; do
