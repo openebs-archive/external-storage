@@ -204,9 +204,13 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 	var newVolume v1alpha1.CASVolume
 	var openebsVol mvol_v1alpha1.CASVolume
 
-	volumeSpec, class := CreateCloneVolumeSpec(snapshotData, pvc, pvName)
+	volumeSpec, class, err := CreateCloneVolumeSpec(snapshotData, pvc, pvName)
+	if err != nil {
+		glog.Errorf("Error creating volume: '%v'", err)
+		return nil, nil, err
+	}
 
-	err := openebsVol.CreateVolume(volumeSpec)
+	err = openebsVol.CreateVolume(volumeSpec)
 	if err != nil {
 		glog.Errorf("Error creating volume: %v", err)
 		return nil, nil, err
@@ -286,18 +290,18 @@ func GetPersistentVolumeClass(volume *v1.PersistentVolume) string {
 	return volume.Spec.StorageClassName
 }
 
-// GetPersistentClass returns StoragClassName
-func GetStorageClass(pvName string) (string, error) {
+// GetPersistentVolume returns PersistentVolume
+func GetPersistentVolume(pvName string) (*v1.PersistentVolume, error) {
 	client, err := GetK8sClient()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	volume, err := client.CoreV1().PersistentVolumes().Get(pvName, metav1.GetOptions{})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	glog.Infof("Source Volume is %#v", volume)
-	return GetPersistentVolumeClass(volume), nil
+	return volume, nil
 }
 
 // GetNameAndNameSpaceFromSnapshotName retrieves the namespace and
@@ -316,7 +320,7 @@ func CreateCloneVolumeSpec(snapshotData *crdv1.VolumeSnapshotData,
 	pvc *v1.PersistentVolumeClaim,
 	pvName string,
 ) (vol v1alpha1.CASVolume,
-	class string) {
+	class string, err error) {
 
 	// restore snapshot to a PV
 	// get the snaphot ID and source volume
@@ -327,15 +331,17 @@ func CreateCloneVolumeSpec(snapshotData *crdv1.VolumeSnapshotData,
 
 	mapLabels := make(map[string]string)
 
+	pvSrcRef, err := GetPersistentVolume(pvRefName)
+	if err != nil {
+		return casVolume, "", fmt.Errorf("Error getting volume details: %v", err)
+	}
+
 	// Get the source PV storage class name which will be passed
 	// to maya-apiserver to extract volume policy while restoring snapshot as
 	// new volume.
-	pvRefStorageClass, err := GetStorageClass(pvRefName)
-	if err != nil {
-		glog.Errorf("Error getting volume details: %v", err)
-	}
+	pvRefStorageClass := GetPersistentVolumeClass(pvSrcRef)
 	if len(pvRefStorageClass) == 0 {
-		glog.Errorf("Volume has no storage class specified")
+		return casVolume, "", fmt.Errorf("Volume has no storage class specified")
 	} else {
 
 		mapLabels[string("openebs.io/storageclass")] = pvRefStorageClass
@@ -343,10 +349,15 @@ func CreateCloneVolumeSpec(snapshotData *crdv1.VolumeSnapshotData,
 	}
 	glog.Infof("Using the Storage Class %s for dynamic provisioning", pvRefStorageClass)
 
+	// get the source volume capacity to make comparision with requested capacity
+	srcVolSize := pvSrcRef.Spec.Capacity[v1.ResourceName(v1.ResourceStorage)]
 	// construct volumespec for volume create request.
 	// Enable volume clone: set clone as true, enables openebs volume to be created
 	// as a clone volume
 	volSize := pvc.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
+	if srcVolSize.Cmp(volSize) != 0 {
+		return casVolume, "", fmt.Errorf("Requested claim size must be equal to source volume size")
+	}
 	casVolume.Spec.Capacity = volSize.String()
 	casVolume.Namespace = pvc.Namespace
 	casVolume.Labels[string(v1alpha1.NamespaceKey)] = pvc.Namespace
@@ -356,5 +367,5 @@ func CreateCloneVolumeSpec(snapshotData *crdv1.VolumeSnapshotData,
 	casVolume.CloneSpec.IsClone = true
 	casVolume.CloneSpec.SourceVolume = pvRefName
 
-	return casVolume, pvRefStorageClass
+	return casVolume, pvRefStorageClass, nil
 }
