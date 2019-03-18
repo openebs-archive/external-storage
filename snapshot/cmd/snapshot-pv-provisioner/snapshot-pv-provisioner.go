@@ -101,7 +101,7 @@ func (p *snapshotProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 	}
 	snapshotName, ok := options.PVC.Annotations[crdclient.SnapshotPVCAnnotation]
 	if !ok {
-		return nil, fmt.Errorf("snapshot annotation not found on PV")
+		return nil, fmt.Errorf("snapshot annotation not found on PVC")
 	}
 
 	var snapshot crdv1.VolumeSnapshot
@@ -112,7 +112,7 @@ func (p *snapshotProvisioner) Provision(options controller.VolumeOptions) (*v1.P
 		Do().Into(&snapshot)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve VolumeSnapshot %s: %v", snapshotName, err)
+		return nil, fmt.Errorf("failed to retrieve VolumeSnapshot %s in namespace %s: %v", snapshotName, options.PVC.Namespace, err)
 	}
 	// FIXME: should also check if any VolumeSnapshotData points to this VolumeSnapshot
 	if len(snapshot.Spec.SnapshotDataName) == 0 {

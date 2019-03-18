@@ -230,6 +230,8 @@ type CinderVolumeSnapshotSource struct {
 type OpenEBSVolumeSnapshotSource struct {
 	// Unique id of the cinder volume snapshot resource. Used to identify the snapshot in OpenStack
 	SnapshotID string `json:"snapshotId"`
+	// Capacity will holds the size of the snapshot
+	Capacity string `json:"capacity"`
 }
 
 // GCEPersistentDiskSnapshotSource is GCE PD volume snapshot source
