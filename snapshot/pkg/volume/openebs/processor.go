@@ -102,9 +102,11 @@ func (h *openEBSPlugin) SnapshotCreate(snapshot *crdv1.VolumeSnapshot, pv *v1.Pe
 		}
 	}
 
+	sizeResource := pv.Spec.Capacity[v1.ResourceName(v1.ResourceStorage)]
 	res := &crdv1.VolumeSnapshotDataSource{
 		OpenEBSSnapshot: &crdv1.OpenEBSVolumeSnapshotSource{
 			SnapshotID: snapshotName,
+			Capacity:   sizeResource.String(),
 		},
 	}
 	return res, &cond, err
