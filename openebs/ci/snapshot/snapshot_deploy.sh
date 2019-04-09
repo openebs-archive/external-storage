@@ -8,7 +8,7 @@ function dumpMayaAPIServerLogs() {
 }
 
 echo "*****************************Deploying Openebs***************************"
-CI_BRANCH="master"
+CI_BRANCH="v0.8.x"
 CI_TAG="ci"
 
 #Images from this repo are always tagged as ci
@@ -27,7 +27,7 @@ sudo docker tag openebs/openebs-k8s-provisioner:ci quay.io/openebs/openebs-k8s-p
 sudo docker tag openebs/snapshot-controller:ci quay.io/openebs/snapshot-controller:${CI_TAG}
 sudo docker tag openebs/snapshot-provisioner:ci quay.io/openebs/snapshot-provisioner:${CI_TAG}
 
-kubectl apply -f https://raw.githubusercontent.com/openebs/openebs/${TRAVIS_BRANCH}/k8s/openebs-operator.yaml
+kubectl apply -f https://raw.githubusercontent.com/openebs/openebs/${CI_BRANCH}/k8s/openebs-operator.yaml
 
 for i in $(seq 1 50) ; do
     replicas=$(kubectl get deployment -n openebs maya-apiserver -o json | jq ".status.readyReplicas")
