@@ -15,7 +15,7 @@
 # limitations under the License.
 
 # global env vars to be used in test scripts
-export CI_BRANCH="master"
+export CI_BRANCH="v0.9.x"
 export CI_TAG="ci"
 
 #$DST_REPO/external-storage/openebs/ci/helm_install_openebs.sh
