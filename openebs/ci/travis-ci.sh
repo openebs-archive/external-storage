@@ -16,7 +16,7 @@
 
 # global env vars to be used in test scripts
 export CI_BRANCH="v0.9.x"
-export CI_TAG="ci"
+export CI_TAG="v0.9.x-ci"
 
 #$DST_REPO/external-storage/openebs/ci/helm_install_openebs.sh
 #rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
