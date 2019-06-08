@@ -1,10 +1,11 @@
 language: go
+dist: xenial
 env:
 - CHANGE_MINIKUBE_NONE_USER=true
 git:
   depth: false
 go:
-  - 1.10.3
+  - 1.11.2
 services: docker
 
 install: true
