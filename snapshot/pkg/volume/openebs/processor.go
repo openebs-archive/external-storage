@@ -29,12 +29,21 @@ import (
 	crdv1 "github.com/kubernetes-incubator/external-storage/snapshot/pkg/apis/crd/v1"
 	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/cloudprovider"
 	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/volume"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
 	openEBSPersistentDiskPluginName = "openebs"
+)
+
+var (
+	// supportedCasType is a map of supported volume type for snapshot
+	// operations.
+	supportedCasType = map[string]bool{
+		"jiva":  true,
+		"cstor": true,
+	}
 )
 
 type openEBSPlugin struct {
@@ -69,15 +78,22 @@ func (h *openEBSPlugin) SnapshotCreate(snapshot *crdv1.VolumeSnapshot, pv *v1.Pe
 
 	snapObj := (*tags)["kubernetes.io/created-for/snapshot/name"]
 	snapshotName := createSnapshotName(pv.Name, snapObj)
+
 	casType := pv.Annotations["openebs.io/cas-type"]
 	if casType == "" {
 		casType = "jiva"
+	}
+
+	ok := supportedCasType[casType]
+	if !ok {
+		return nil, nil, fmt.Errorf("aborting snapshot create operation as specified cas-Type '%s' which is not suported", casType)
 	}
 	_, err := h.CreateSnapshot(casType, pv.Name, snapshotName, pv.Spec.ClaimRef.Namespace)
 	if err != nil {
 		glog.Errorf("failed to create snapshot for volume :%v, err: %v", pv.Name, err)
 		return nil, nil, err
 	}
+
 	glog.V(1).Info("snapshot %v created successfully", snapshotName)
 
 	cond := []crdv1.VolumeSnapshotCondition{}
