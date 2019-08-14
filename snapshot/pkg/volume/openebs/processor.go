@@ -38,9 +38,9 @@ const (
 )
 
 var (
-	// supportedCasType is a map of supported volume type for snapshot
+	// SnapSupportedCASType is a map of supported volume type for snapshot
 	// operations.
-	supportedCasType = map[string]bool{
+	SnapSupportedCASType = map[string]bool{
 		"jiva":  true,
 		"cstor": true,
 	}
@@ -84,9 +84,9 @@ func (h *openEBSPlugin) SnapshotCreate(snapshot *crdv1.VolumeSnapshot, pv *v1.Pe
 		casType = "jiva"
 	}
 
-	ok := supportedCasType[casType]
+	ok := SnapSupportedCASType[casType]
 	if !ok {
-		return nil, nil, fmt.Errorf("aborting snapshot create operation as specified cas-Type '%s' which is not suported", casType)
+		return nil, nil, fmt.Errorf("aborting create snapshot operation as specified volume type (%s) does not support snapshots", casType)
 	}
 	_, err := h.CreateSnapshot(casType, pv.Name, snapshotName, pv.Spec.ClaimRef.Namespace)
 	if err != nil {
