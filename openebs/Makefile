@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+ifeq (${BASE_DOCKER_IMAGEARM64}, )
+  BASE_DOCKER_IMAGEARM64 = "arm64v8/ubuntu:18.04"
+  export BASE_DOCKER_IMAGEARM64
+endif
+
 .PHONY: image clean build push deploy
 .DEFAULT_GOAL := build
 
@@ -39,4 +44,5 @@ clean:
 .PHONY: image.arm64
 image.arm64: build
 	@cp openebs-provisioner buildscripts/docker/
-	@cd buildscripts/docker && sudo docker build -f Dockerfile.arm64 -t openebs/openebs-k8s-provisioner-arm64:ci .
+	@cd buildscripts/docker && sudo docker build -f Dockerfile.arm64 -t openebs/openebs-k8s-provisioner-arm64:ci --build-arg BASE_IMAGE=${BASE_DOCKER_IMAGEARM64} .
+
