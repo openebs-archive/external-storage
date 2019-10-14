@@ -35,3 +35,8 @@ clean:
 	rm -rf vendor
 	rm -f openebs-provisioner
 	rm -f buildscripts/docker/openebs-provisioner
+
+.PHONY: image.arm64
+image.arm64: build
+	@cp openebs-provisioner buildscripts/docker/
+	@cd buildscripts/docker && sudo docker build -f Dockerfile.arm64 -t openebs/openebs-k8s-provisioner-arm64:ci .
