@@ -252,7 +252,7 @@ func (h *openEBSPlugin) SnapshotRestore(snapshotData *crdv1.VolumeSnapshotData,
 			TargetPortal: newVolume.Spec.TargetPortal,
 			IQN:          newVolume.Spec.Iqn,
 			Lun:          0,
-			FSType:       "ext4",
+			FSType:       newVolume.Spec.FSType,
 			ReadOnly:     false,
 		},
 	}
