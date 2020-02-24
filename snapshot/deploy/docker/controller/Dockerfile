@@ -12,9 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM busybox:glibc
-COPY snapshot-controller /bin/snapshot-controller
+FROM alpine:3.6
+
+RUN apk add --no-cache \
+    bash \
+    net-tools \
+    mii-tool \
+    procps \
+    libc6-compat \
+    ca-certificates
+
+COPY snapshot-controller /
 # Root CA certificates
 COPY etc /etc
 COPY usr /usr
-ENTRYPOINT ["/bin/snapshot-controller"]
+ENTRYPOINT ["/snapshot-controller"]
