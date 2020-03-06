@@ -28,4 +28,12 @@ rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
 # download the test script from openebs/openebs and execute it.
 echo "**************Executing common test script from openebs/openebs**************"
 curl https://raw.githubusercontent.com/openebs/openebs/master/k8s/ci/test-script.sh > test-script.sh
+
+## Compile udev c code and build binary in /var/openebs/sparse
+echo "Creating /var/openebs/sparse/udev_checks directory"
+sudo mkdir -p /var/openebs/sparse/udev_checks
+echo "Compiling and building the binary"
+sudo gcc $DST_REPO/external-storage/openebs/ci/udev_check.c -ludev -o /var/openebs/sparse/udev_checks/udev_check
+
+## Executing the script
 chmod +x test-script.sh && ./test-script.sh
