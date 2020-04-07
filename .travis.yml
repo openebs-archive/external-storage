@@ -27,8 +27,12 @@ jobs:
   include:
     - os: linux
       arch: amd64
+      env:
+        - RELEASE_TAG_DOWNSTREAM=1
     - os: linux
       arch: arm64
+      env:
+        - RELEASE_TAG_DOWNSTREAM=0
 
 before_install:
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
@@ -56,6 +60,12 @@ script:
   # kubectl get deployment;
   - if [ "$TRAVIS_CPU_ARCH" == "amd64" ]; then
       ./openebs-ci.sh ;
+    fi
+  # If this build is running due to travis release tag, and
+  # this job indicates to push the release downstream, then
+  # go ahead and tag the dependent repo.
+  - if [ ! -z $TRAVIS_TAG ] && [ $RELEASE_TAG_DOWNSTREAM = 1 ] && [ "$TRAVIS_REPO_SLUG" == "openebs/external-storage" ]; then
+      ./openebs/buildscripts/git-release "openebs/maya" "$TRAVIS_TAG" "$TRAVIS_BRANCH" || travis_terminate 1;
     fi
 
 after_success:
