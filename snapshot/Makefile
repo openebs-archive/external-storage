@@ -12,16 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# set the shell to bash in case some environments use sh
+SHELL:=/bin/bash
+
+# Determine the arch/os
+ifeq (${XC_OS}, )
+  XC_OS:=$(shell go env GOOS)
+endif
+export XC_OS
+
+ifeq (${XC_ARCH}, )
+  XC_ARCH:=$(shell go env GOARCH)
+endif
+export XC_ARCH
+
+ARCH:=${XC_OS}_${XC_ARCH}
+export ARCH
+
 ifeq ($(REGISTRY),)
 	REGISTRY = quay.io/external_storage/
 endif
 ifeq ($(VERSION),)
 	VERSION = latest
 endif
-IMAGE_CONTROLLER = $(REGISTRY)snapshot-controller:$(VERSION)
-MUTABLE_IMAGE_CONTROLLER = $(REGISTRY)snapshot-controller:latest
-IMAGE_PROVISIONER = $(REGISTRY)snapshot-provisioner:$(VERSION)
-MUTABLE_IMAGE_PROVISIONER = $(REGISTRY)snapshot-provisioner:latest
+
+ifeq ($(ARCH),linux_arm64)
+  IMAGE_CONTROLLER = $(REGISTRY)snapshot-controller-arm64:$(VERSION)
+  MUTABLE_IMAGE_CONTROLLER = $(REGISTRY)snapshot-controller-arm64:latest
+  IMAGE_PROVISIONER = $(REGISTRY)snapshot-provisioner-arm64:$(VERSION)
+  MUTABLE_IMAGE_PROVISIONER = $(REGISTRY)snapshot-provisioner-arm64:latest
+else
+  IMAGE_CONTROLLER = $(REGISTRY)snapshot-controller:$(VERSION)
+  MUTABLE_IMAGE_CONTROLLER = $(REGISTRY)snapshot-controller:latest
+  IMAGE_PROVISIONER = $(REGISTRY)snapshot-provisioner:$(VERSION)
+  MUTABLE_IMAGE_PROVISIONER = $(REGISTRY)snapshot-provisioner:latest
+endif
 
 .PHONY: all controller provisioner clean container container-quick push test
 

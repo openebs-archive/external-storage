@@ -248,7 +248,7 @@ push-flex-provisioner:
 
 push-openebs-provisioner:
 	cd openebs; \
-	make push
+	make deploy
 .PHONY: push-openebs-provisioner
 
 deploy-openebs-provisioner:

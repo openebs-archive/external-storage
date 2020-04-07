@@ -17,19 +17,5 @@
 DST_REPO="$GOPATH/src/github.com/kubernetes-incubator"
 export DST_REPO
 
-echo "Building openebs-provisioner"
-export DIMAGE="openebs/openebs-k8s-provisioner"
-cd $DST_REPO/external-storage/
-make push-openebs-provisioner
-rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
-
-echo "Building snapshot-controller and snapshot-provisioner"
-cd $DST_REPO/external-storage/snapshot
-export REGISTRY="openebs/"
-export VERSION="ci"
-make container
-rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
-
-cd $DST_REPO/external-storage/
 $DST_REPO/external-storage/openebs/ci/travis-ci.sh
 rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi

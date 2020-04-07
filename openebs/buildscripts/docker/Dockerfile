@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:16.04
+ARG BASE_IMAGE=ubuntu:16.04
+FROM $BASE_IMAGE
 COPY openebs-provisioner /
 CMD ["/openebs-provisioner"]

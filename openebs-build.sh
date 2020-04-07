@@ -14,11 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#This is a forked repo. Copy the contents to the expected go folder.
 SRC_REPO=`pwd`
 DST_REPO="$GOPATH/src/github.com/kubernetes-incubator"
-
 mkdir -p $DST_REPO
 cp -R $SRC_REPO/../external-storage $DST_REPO
-cd $DST_REPO/external-storage
-make openebs
 
+echo "Building openebs-provisioner"
+cd $DST_REPO/external-storage/openebs
+make container
+rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
+
+echo "Building snapshot-controller and snapshot-provisioner"
+cd $DST_REPO/external-storage/snapshot
+export REGISTRY="openebs/"
+export VERSION="ci"
+make container
+rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi

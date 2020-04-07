@@ -14,12 +14,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export DIMAGE="openebs/openebs-k8s-provisioner"
-./openebs/buildscripts/push
+# Determine the arch/os we're building for
+ARCH=$(uname -m)
 
-export DIMAGE="openebs/snapshot-controller"
-./openebs/buildscripts/push
+if [ "${ARCH}" = "x86_64" ]; then
+	export DIMAGE="openebs/openebs-k8s-provisioner"
+	./openebs/buildscripts/push
 
-export DIMAGE="openebs/snapshot-provisioner"
-./openebs/buildscripts/push
+	export DIMAGE="openebs/snapshot-controller"
+	./openebs/buildscripts/push
+
+	export DIMAGE="openebs/snapshot-provisioner"
+	./openebs/buildscripts/push
+elif [ "${ARCH}" = "aarch64" ]; then
+	export DIMAGE="openebs/openebs-k8s-provisioner-arm64"
+	./openebs/buildscripts/push
+
+	export DIMAGE="openebs/snapshot-controller-arm64"
+	./openebs/buildscripts/push
+
+	export DIMAGE="openebs/snapshot-provisioner-arm64"
+	./openebs/buildscripts/push
+else
+	echo "${ARCH} is not supported"
+	exit 1
+fi
+
 
