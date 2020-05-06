@@ -17,6 +17,10 @@
 # Determine the arch/os we're building for
 ARCH=$(uname -m)
 
+if [ -z "${IMAGE_ORG}" ]; then
+	IMAGE_ORG="openebs"
+fi
+
 if [ "${ARCH}" = "x86_64" ]; then
 	export DIMAGE="${IMAGE_ORG}/openebs-k8s-provisioner"
 	./openebs/buildscripts/push
