@@ -18,22 +18,22 @@
 ARCH=$(uname -m)
 
 if [ "${ARCH}" = "x86_64" ]; then
-	export DIMAGE="openebs/openebs-k8s-provisioner"
+	export DIMAGE="${IMAGE_ORG}/openebs-k8s-provisioner"
 	./openebs/buildscripts/push
 
-	export DIMAGE="openebs/snapshot-controller"
+	export DIMAGE="${IMAGE_ORG}/snapshot-controller"
 	./openebs/buildscripts/push
 
-	export DIMAGE="openebs/snapshot-provisioner"
+	export DIMAGE="${IMAGE_ORG}/snapshot-provisioner"
 	./openebs/buildscripts/push
 elif [ "${ARCH}" = "aarch64" ]; then
-	export DIMAGE="openebs/openebs-k8s-provisioner-arm64"
+	export DIMAGE="${IMAGE_ORG}/openebs-k8s-provisioner-arm64"
 	./openebs/buildscripts/push
 
-	export DIMAGE="openebs/snapshot-controller-arm64"
+	export DIMAGE="${IMAGE_ORG}/snapshot-controller-arm64"
 	./openebs/buildscripts/push
 
-	export DIMAGE="openebs/snapshot-provisioner-arm64"
+	export DIMAGE="${IMAGE_ORG}/snapshot-provisioner-arm64"
 	./openebs/buildscripts/push
 else
 	echo "${ARCH} is not supported"

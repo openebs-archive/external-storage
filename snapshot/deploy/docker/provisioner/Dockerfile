@@ -27,4 +27,17 @@ COPY snapshot-provisioner /
 # Root CA certificates
 COPY etc /etc
 COPY usr /usr
+
+ARG ARCH
+ARG DBUILD_DATE
+ARG DBUILD_REPO_URL
+ARG DBUILD_SITE_URL
+
+LABEL org.label-schema.schema-version="1.0"
+LABEL org.label-schema.name="snapshot-provisioner"
+LABEL org.label-schema.description="OpenEBS Dynamic cStor Snapshot Provisioner"
+LABEL org.label-schema.build-date=$DBUILD_DATE
+LABEL org.label-schema.vcs-url=$DBUILD_REPO_URL
+LABEL org.label-schema.url=$DBUILD_SITE_URL
+
 ENTRYPOINT ["/snapshot-provisioner"]

@@ -29,8 +29,31 @@ export XC_ARCH
 ARCH:=${XC_OS}_${XC_ARCH}
 export ARCH
 
+ifeq (${IMAGE_ORG}, )
+  IMAGE_ORG=openebs
+  export IMAGE_ORG
+endif
+
+# Specify the date of build
+DBUILD_DATE=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
+
+# Specify the docker arg for repository url
+ifeq (${DBUILD_REPO_URL}, )
+  DBUILD_REPO_URL="https://github.com/openebs/external-storage"
+  export DBUILD_REPO_URL
+endif
+
+# Specify the docker arg for website url
+ifeq (${DBUILD_SITE_URL}, )
+  DBUILD_SITE_URL="https://openebs.io"
+  export DBUILD_SITE_URL
+endif
+
+export DBUILD_ARGS=--build-arg DBUILD_DATE=${DBUILD_DATE} --build-arg DBUILD_REPO_URL=${DBUILD_REPO_URL} --build-arg DBUILD_SITE_URL=${DBUILD_SITE_URL} --build-arg ARCH=${ARCH}
+
+
 ifeq ($(REGISTRY),)
-	REGISTRY = quay.io/external_storage/
+	REGISTRY = ${IMAGE_ORG}/
 endif
 ifeq ($(VERSION),)
 	VERSION = latest
@@ -78,9 +101,9 @@ container-quick:
 	# Copy the root CA certificates -- cloudproviders need them
 	cp -Rf deploy/ca-certificates/* deploy/docker/controller/.
 	cp -Rf deploy/ca-certificates/* deploy/docker/provisioner/.
-	docker build -t $(MUTABLE_IMAGE_CONTROLLER) deploy/docker/controller
+	docker build -t $(MUTABLE_IMAGE_CONTROLLER) ${DBUILD_ARGS} deploy/docker/controller
 	docker tag $(MUTABLE_IMAGE_CONTROLLER) $(IMAGE_CONTROLLER)
-	docker build -t $(MUTABLE_IMAGE_PROVISIONER) deploy/docker/provisioner
+	docker build -t $(MUTABLE_IMAGE_PROVISIONER) ${DBUILD_ARGS} deploy/docker/provisioner
 	docker tag $(MUTABLE_IMAGE_PROVISIONER) $(IMAGE_PROVISIONER)
 
 push: container

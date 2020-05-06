@@ -15,4 +15,17 @@
 ARG BASE_IMAGE=ubuntu:16.04
 FROM $BASE_IMAGE
 COPY openebs-provisioner /
+
+ARG ARCH
+ARG DBUILD_DATE
+ARG DBUILD_REPO_URL
+ARG DBUILD_SITE_URL
+
+LABEL org.label-schema.schema-version="1.0"
+LABEL org.label-schema.name="openebs-k8s-provisioner"
+LABEL org.label-schema.description="OpenEBS Dynamic cStor and Jiva Provisioner"
+LABEL org.label-schema.build-date=$DBUILD_DATE
+LABEL org.label-schema.vcs-url=$DBUILD_REPO_URL
+LABEL org.label-schema.url=$DBUILD_SITE_URL
+
 CMD ["/openebs-provisioner"]

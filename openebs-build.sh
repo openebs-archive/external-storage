@@ -27,7 +27,6 @@ rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
 
 echo "Building snapshot-controller and snapshot-provisioner"
 cd $DST_REPO/external-storage/snapshot
-export REGISTRY="openebs/"
 export VERSION="ci"
 make container
 rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi

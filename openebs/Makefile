@@ -42,10 +42,33 @@ else
 endif
 export BASEIMAGE
 
+ifeq (${IMAGE_ORG}, )
+  IMAGE_ORG=openebs
+  export IMAGE_ORG
+endif
+
+# Specify the date of build
+DBUILD_DATE=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
+
+# Specify the docker arg for repository url
+ifeq (${DBUILD_REPO_URL}, )
+  DBUILD_REPO_URL="https://github.com/openebs/external-storage"
+  export DBUILD_REPO_URL
+endif
+
+# Specify the docker arg for website url
+ifeq (${DBUILD_SITE_URL}, )
+  DBUILD_SITE_URL="https://openebs.io"
+  export DBUILD_SITE_URL
+endif
+
+export DBUILD_ARGS=--build-arg DBUILD_DATE=${DBUILD_DATE} --build-arg DBUILD_REPO_URL=${DBUILD_REPO_URL} --build-arg DBUILD_SITE_URL=${DBUILD_SITE_URL} --build-arg ARCH=${ARCH}
+
+
 ifeq (${ARCH},linux_arm64)
-  DIMAGE:="openebs/openebs-k8s-provisioner-arm64"
+  DIMAGE:="${IMAGE_ORG}/openebs-k8s-provisioner-arm64"
 else
-  DIMAGE:="openebs/openebs-k8s-provisioner"
+  DIMAGE:="${IMAGE_ORG}/openebs-k8s-provisioner"
 endif
 export DIMAGE
 
@@ -58,7 +81,7 @@ build:
 
 image: build
 	@cp openebs-provisioner buildscripts/docker/
-	@cd buildscripts/docker && sudo docker build -t ${DIMAGE}:ci --build-arg BASE_IMAGE=${BASEIMAGE} .
+	@cd buildscripts/docker && sudo docker build -t ${DIMAGE}:ci ${DBUILD_ARGS} --build-arg BASE_IMAGE=${BASEIMAGE} .
 
 .PHONY: container
 container: image
