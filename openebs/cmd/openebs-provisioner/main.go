@@ -18,6 +18,8 @@ package main
 
 import (
 	"flag"
+	"os"
+	"strings"
 
 	"syscall"
 
@@ -33,6 +35,9 @@ import (
 
 const (
 	provisionerName = "openebs.io/provisioner-iscsi"
+	// LeaderElectionKey represents ENV for disable/enable leaderElection for
+	// openebs-provisioner
+	LeaderElectionKey = "LEADER_ELECTION_ENABLED"
 )
 
 func main() {
@@ -82,7 +87,29 @@ func main() {
 		provisionerName,
 		openEBSProvisioner,
 		serverVersion.GitVersion,
+		controller.LeaderElection(isLeaderElectionEnabled()),
 	)
 	// Run starts all of controller's control loops
 	pc.Run(wait.NeverStop)
+}
+
+// isLeaderElectionEnabled returns true/false based on the ENV
+// LEADER_ELECTION_ENABLED set via provisioner deployment.
+// Defaults to true, means leaderElection enabled by default.
+func isLeaderElectionEnabled() bool {
+	leaderElection := os.Getenv(LeaderElectionKey)
+
+	var leader bool
+	switch strings.ToLower(leaderElection) {
+	default:
+		glog.Info("Leader election enabled for openebs-provisioner")
+		leader = true
+	case "y", "yes", "true":
+		glog.Info("Leader election enabled for openebs-provisioner via leaderElectionKey")
+		leader = true
+	case "n", "no", "false":
+		glog.Info("Leader election disabled for openebs-provisioner via leaderElectionKey")
+		leader = false
+	}
+	return leader
 }
