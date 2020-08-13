@@ -20,6 +20,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/golang/glog"
 	"github.com/kubernetes-incubator/external-storage/lib/controller"
@@ -37,7 +39,7 @@ import (
 	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/volume/hostpath"
 	"github.com/kubernetes-incubator/external-storage/snapshot/pkg/volume/openebs"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
@@ -49,6 +51,9 @@ import (
 const (
 	provisionerName  = "volumesnapshot.external-storage.k8s.io/snapshot-promoter"
 	provisionerIDAnn = "snapshotProvisionerIdentity"
+	// LeaderElectionKey represents ENV for disable/enable leaderElection for
+	// snapshot-provisioner
+	LeaderElectionKey = "LEADER_ELECTION_ENABLED"
 )
 
 type snapshotProvisioner struct {
@@ -247,6 +252,7 @@ func main() {
 		provisionerName,
 		snapshotProvisioner,
 		serverVersion.GitVersion,
+		controller.LeaderElection(isLeaderElectionEnabled()),
 	)
 	glog.Infof("starting PV provisioner %s", provisionerName)
 	pc.Run(wait.NeverStop)
@@ -281,4 +287,25 @@ func buildVolumePlugins() {
 	volumePlugins[hostpath.GetPluginName()] = hostpath.RegisterPlugin()
 	volumePlugins[openebs.GetPluginName()] = openebs.RegisterPlugin()
 
+}
+
+// isLeaderElectionEnabled returns true/false based on the ENV
+// LEADER_ELECTION_ENABLED set via snaphot provisioner deployment.
+// Defaults to true, means leaderElection enabled by default.
+func isLeaderElectionEnabled() bool {
+	leaderElection := os.Getenv(LeaderElectionKey)
+
+	var leader bool
+	switch strings.ToLower(leaderElection) {
+	default:
+		glog.Info("Leader election enabled for snapshot-provisioner")
+		leader = true
+	case "y", "yes", "true":
+		glog.Info("Leader election enabled for snapshot-provisioner via leaderElectionKey")
+		leader = true
+	case "n", "no", "false":
+		glog.Info("Leader election disabled for snapshot-provisioner via leaderElectionKey")
+		leader = false
+	}
+	return leader
 }
