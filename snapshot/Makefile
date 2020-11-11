@@ -111,3 +111,5 @@ push: container
 	docker push $(MUTABLE_IMAGE_CONTROLLER)
 	docker push $(IMAGE_PROVISIONER)
 	docker push $(MUTABLE_IMAGE_PROVISIONER)
+
+include Makefile.buildx.mk
