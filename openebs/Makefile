@@ -96,3 +96,4 @@ clean:
 	rm -f openebs-provisioner
 	rm -f buildscripts/docker/openebs-provisioner
 
+include Makefile.buildx.mk

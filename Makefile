@@ -254,3 +254,6 @@ push-openebs-provisioner:
 deploy-openebs-provisioner:
 	cd openebs; \
 	make deploy
+
+include ./openebs/Makefile.buildx.mk
+include ./snapshot/Makefile.buildx.mk
