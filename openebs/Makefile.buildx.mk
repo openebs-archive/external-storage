@@ -47,7 +47,6 @@ buildx.provisioner: build
 
 .PHONY: docker.buildx.provisioner
 docker.buildx.provisioner:
-	@echo "--> Build docker image: $(DOCKERX_IMAGE_NAME)"
 	export DOCKER_CLI_EXPERIMENTAL=enabled
 	@if ! docker buildx ls | grep -q container-builder; then\
 		docker buildx create --platform ${PLATFORMS} --name container-builder --use;\
@@ -56,9 +55,9 @@ docker.buildx.provisioner:
 		-t "$(DOCKERX_IMAGE_PROVISIONER)" ${DBUILD_ARGS} \
 		-f $(PWD)/openebs/buildscripts/docker/provisioner.Dockerfile \
 		. ${PUSH_ARG}
-	@echo "--> Build docker image: $(DOCKERX_IMAGE_NAME)"
+	@echo "--> Build docker image: $(DOCKERX_IMAGE_PROVISIONER)"
 	@echo
 
 .PHONY: buildx.push.provisioner
 buildx.push.provisioner:
-	BUILDX=true DIMAGE=${IMAGE_ORG}/openebs-provisioner ./buildxpush
+	BUILDX=true DIMAGE=${IMAGE_ORG}/openebs-k8s-provisioner ./buildxpush

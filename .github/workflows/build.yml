@@ -42,7 +42,7 @@ jobs:
         run: |
           BRANCH="${GITHUB_REF##*/}"
           CI_TAG=${BRANCH#v}-ci
-          if [ ${BRANCH} = "master" ]; then
+          if [ ${BRANCH} = "release" ]; then
             CI_TAG="ci"
           fi
 
@@ -89,7 +89,7 @@ jobs:
         run: |
           BRANCH="${GITHUB_REF##*/}"
           CI_TAG=${BRANCH#v}-ci
-          if [ ${BRANCH} = "master" ]; then
+          if [ ${BRANCH} = "release" ]; then
             CI_TAG="ci"
           fi
           echo "TAG=${CI_TAG}" >> $GITHUB_ENV
@@ -135,7 +135,7 @@ jobs:
         run: |
           BRANCH="${GITHUB_REF##*/}"
           CI_TAG=${BRANCH#v}-ci
-          if [ ${BRANCH} = "master" ]; then
+          if [ ${BRANCH} = "release" ]; then
             CI_TAG="ci"
           fi
           echo "TAG=${CI_TAG}" >> $GITHUB_ENV

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+ifeq (${IMAGE_ORG}, )
+  IMAGE_ORG=openebs
+  export IMAGE_ORG
+endif
+
 all: aws/efs ceph/cephfs ceph/rbd flex gluster/block gluster/glusterfs gluster/file iscsi/targetd local-volume/provisioner nfs-client nfs snapshot
 .PHONY: all
 
