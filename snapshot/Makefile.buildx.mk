@@ -41,8 +41,8 @@ else
 endif
 
 # Name of the multiarch image for snapshot-provisioner and controller
-DOCKERX_IMAGE_SNAPSHOTTER:=${IMAGE_ORG}/snapshot-controller:${TAG}
-DOCKERX_IMAGE_PROVISIONER:=${IMAGE_ORG}/snapshot-provisioner:${TAG}
+DOCKERX_IMAGE_SNAP_CONTROLLER:=${IMAGE_ORG}/snapshot-controller:${TAG}
+DOCKERX_IMAGE_SNAP_PROVISIONER:=${IMAGE_ORG}/snapshot-provisioner:${TAG}
 
 .PHONY: docker.buildx
 docker.buildx:
@@ -58,13 +58,13 @@ docker.buildx:
 	@echo
 
 .PHONY: docker.buildx.snapshot-controller
-docker.buildx.snapshot-controller: DOCKERX_IMAGE_NAME=$(DOCKERX_IMAGE_SNAPSHOTTER)
+docker.buildx.snapshot-controller: DOCKERX_IMAGE_NAME=$(DOCKERX_IMAGE_SNAP_CONTROLLER)
 docker.buildx.snapshot-controller: COMPONENT=controller
 docker.buildx.snapshot-controller: BUILD_ARGS=$(DBUILD_ARGS)
 docker.buildx.snapshot-controller: docker.buildx
 
 .PHONY: docker.buildx.snapshot-provisioner
-docker.buildx.snapshot-provisioner: DOCKERX_IMAGE_NAME=$(DOCKERX_IMAGE_PROVISIONER)
+docker.buildx.snapshot-provisioner: DOCKERX_IMAGE_NAME=$(DOCKERX_IMAGE_SNAP_PROVISIONER)
 docker.buildx.snapshot-provisioner: COMPONENT=provisioner
 docker.buildx.snapshot-provisioner: BUILD_ARGS=$(DBUILD_ARGS)
 docker.buildx.snapshot-provisioner: docker.buildx
