@@ -65,9 +65,9 @@ jobs:
       - name: checkout
         uses: actions/checkout@v1
 
-      - name: set tag
+      - name: Set Tag
         run: |
-          tag="${github_ref#refs/*/v}"
+          TAG="${GITHUB_REF#refs/*/v}"
           echo "TAG=${TAG}" >> $GITHUB_ENV
           echo "RELEASE_TAG=${TAG}" >> $GITHUB_ENV
 
