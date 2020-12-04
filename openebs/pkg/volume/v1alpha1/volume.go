@@ -150,11 +150,16 @@ func (v CASVolume) ReadVolume(vname, namespace, storageclass string, obj interfa
 		return err
 	}
 
+	patchJivaReplicaWithNodeAffinity := os.Getenv("OPENEBS_IO_JIVA_PATCH_NODE_AFFINITY")
+	if patchJivaReplicaWithNodeAffinity == "" {
+		patchJivaReplicaWithNodeAffinity = "enabled"
+	}
+
 	req.Header.Set("namespace", namespace)
 	// passing storageclass info as a request header which will extracted by the
 	// Maya-apiserver to get the CAS template name
 	req.Header.Set(string(v1alpha1.StorageClassHeaderKey), storageclass)
-	req.Header.Set(string(v1alpha1.IsPatchJivaReplicaNodeAffinityHeader), "enabled")
+	req.Header.Set(string(v1alpha1.IsPatchJivaReplicaNodeAffinityHeader), patchJivaReplicaWithNodeAffinity)
 
 	c := &http.Client{
 		Timeout: timeout,
