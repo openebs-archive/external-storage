@@ -96,7 +96,7 @@ script:
 
       REL_BRANCH=$(echo $(echo "$TRAVIS_TAG" | cut -d'-' -f1 | rev | cut -d'.' -f2- | rev).x$REL_SUFFIX);
 
-      ./openebs/buildscripts/git-release "$REPO_ORG/maya" "$TRAVIS_TAG" "$REL_BRANCH" || travis_terminate 1;
+      ./openebs/buildscripts/git-release "$REPO_ORG/openebs-k8s-provisioner" "$TRAVIS_TAG" "$REL_BRANCH" || travis_terminate 1;
     fi
 
 after_success:
