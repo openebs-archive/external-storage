@@ -20,10 +20,10 @@ DST_REPO="$GOPATH/src/github.com/kubernetes-incubator"
 mkdir -p $DST_REPO
 cp -R $SRC_REPO/../external-storage $DST_REPO
 
-echo "Building openebs-provisioner"
-cd $DST_REPO/external-storage/openebs
-make container
-rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
+#echo "Building openebs-provisioner"
+#cd $DST_REPO/external-storage/openebs
+#make container
+#rc=$?; if [[ $rc != 0 ]]; then exit $rc; fi
 
 echo "Building snapshot-controller and snapshot-provisioner"
 cd $DST_REPO/external-storage/snapshot

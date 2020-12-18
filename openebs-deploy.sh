@@ -22,8 +22,8 @@ if [ -z "${IMAGE_ORG}" ]; then
 fi
 
 if [ "${ARCH}" = "x86_64" ]; then
-	export DIMAGE="${IMAGE_ORG}/openebs-k8s-provisioner"
-	./openebs/buildscripts/push
+	#export DIMAGE="${IMAGE_ORG}/openebs-k8s-provisioner"
+	#./openebs/buildscripts/push
 
 	export DIMAGE="${IMAGE_ORG}/snapshot-controller"
 	./openebs/buildscripts/push
@@ -31,8 +31,8 @@ if [ "${ARCH}" = "x86_64" ]; then
 	export DIMAGE="${IMAGE_ORG}/snapshot-provisioner"
 	./openebs/buildscripts/push
 elif [ "${ARCH}" = "aarch64" ]; then
-	export DIMAGE="${IMAGE_ORG}/openebs-k8s-provisioner-arm64"
-	./openebs/buildscripts/push
+	#export DIMAGE="${IMAGE_ORG}/openebs-k8s-provisioner-arm64"
+	#./openebs/buildscripts/push
 
 	export DIMAGE="${IMAGE_ORG}/snapshot-controller-arm64"
 	./openebs/buildscripts/push
