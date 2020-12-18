@@ -4,7 +4,7 @@ The early engines Jiva and cStor were using the provisioners built from this rep
 
 If you are looking for the OpenEBS K8s Provisioner, it has already been migrated to https://github.com/openebs/openebs-k8s-provisioner.
 
-This repository is only used for building the snapshot-provionsers used by cStor pools provisioned with SPC. 
+This repository is only used for building the snapshot provionsers used by cStor pools provisioned with SPC. 
 
 _Note: The snapshot provisioners are already deprecated by Kubernetes and will soon be deprecated by the OpenEBS community in favor of the cStor CSI Driver available at https://github.com/openebs/cstor-operators_
 
